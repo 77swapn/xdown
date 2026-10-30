@@ -349,10 +349,14 @@
                   <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
                 </button>
               ` : ''}
-              <!-- Direct Download Button (Auto-Bypass "Download Anyway") -->
-              <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" title="Download">
+              <!-- Direct Download / Drive File Link -->
+              <a href="https://drive.google.com/file/d/${file.id}/view" 
+                 target="_blank" 
+                 rel="noopener noreferrer"
+                 class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" 
+                 title="Download / Open in Google Drive">
                 <i data-lucide="download" class="w-5 h-5"></i>
-              </button>
+              </a>
               <!-- File Size Badge placed after Download Icon -->
               ${file.size ? `
                 <span class="text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
@@ -386,12 +390,7 @@
           });
         }
 
-        // Handle Download: Auto submits Google confirmation form to trigger "Download Anyway" immediately
-        const downloadBtn = item.querySelector('.download-btn');
-        downloadBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          triggerDownloadAnyway(file.id);
-        });
+
 
         fileListEl.appendChild(item);
       });

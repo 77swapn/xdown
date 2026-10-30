@@ -55,18 +55,34 @@
         <i data-lucide="monitor-smartphone" class="w-5 h-5 text-netfixRed shrink-0"></i>
         <span id="playingTitle" class="text-base sm:text-lg font-semibold truncate text-zinc-100 font-sans"></span>
       </div>
-      <button id="closePlayerBtn" class="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium border border-cardBorder cursor-pointer">
-        <i data-lucide="x" class="w-4 h-4"></i> Close
-      </button>
+      <div class="flex items-center gap-2 ml-auto">
+        <!-- Direct External Google Drive fallback link -->
+        <a id="openDriveLink" href="#" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium border border-cardBorder cursor-pointer whitespace-nowrap" title="Open in Google Drive if embed is blocked">
+          <i data-lucide="external-link" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Drive Player</span>
+        </a>
+        <button id="closePlayerBtn" class="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium border border-cardBorder cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i> Close
+        </button>
+      </div>
     </div>
 
-    <!-- Centered 16:9 Custom Player -->
-    <div class="w-full max-w-[min(94vw,1280px)] aspect-video rounded-xl overflow-hidden shadow-2xl border border-zinc-800 bg-black">
+    <!-- Centered 16:9 Custom Player with native error handling -->
+    <div class="relative w-full max-w-[min(94vw,1280px)] aspect-video rounded-xl overflow-hidden shadow-2xl border border-zinc-800 bg-black flex items-center justify-center">
+      <!-- Loading indicator behind iframe -->
+      <div id="playerSpinner" class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-zinc-500 bg-black pointer-events-none z-0">
+        <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-netfixRed"></i>
+        <span class="text-xs uppercase tracking-wider font-medium">Connecting video stream...</span>
+      </div>
+
+      <!-- Iframe Player -->
       <iframe
         id="videoPlayer"
-        class="w-full h-full border-0 rounded-xl"
-        src=""
-        allow="autoplay; fullscreen"
+        class="relative z-10 w-full h-full border-0 rounded-xl"
+        src="about:blank"
+        title="Video player"
+        referrerpolicy="no-referrer"
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         allowfullscreen>
       </iframe>
     </div>
@@ -90,19 +106,16 @@
     </div>
   </main>
 
-  <!-- Hidden iframe for instant direct downloads without opening intermediate pages -->
-  <iframe id="downloadFrame" class="hidden" style="display:none;"></iframe>
-
   <script>
     // Verified active files from your Google Drive folder
     const DEFAULT_FILES = [
       {
-            "id": "1WlcrBRKLEQibT0_4hR3N0ilGbKj1970A",
-            "name": "Mirzapur The Movie 2026.mkv",
-            "size": "",
-            "mimeType": "video/x-matroska"
+        "id": "1WlcrBRKLEQibT0_4hR3N0ilGbKj1970A",
+        "name": "Mirzapur The Movie 2026.mkv",
+        "size": "1.11 GB",
+        "mimeType": "video/x-matroska"
       }
-];
+    ];
 
     // Strip file extensions for clean display
     function cleanFileName(filename) {
@@ -112,11 +125,8 @@
 
     // LocalStorage initialization
     function getStoredFiles() {
-      const stored = localStorage.getItem('netfix_files');
-      if (stored) {
-        try { return JSON.parse(stored); } catch (e) {}
-      }
-      localStorage.setItem('netfix_files', JSON.stringify(DEFAULT_FILES));
+      // Prioritize active verified DEFAULT_FILES
+      try { localStorage.setItem('netfix_files', JSON.stringify(DEFAULT_FILES)); } catch (e) {}
       return DEFAULT_FILES;
     }
 
@@ -128,6 +138,8 @@
     const videoPlayer = document.getElementById('videoPlayer');
     const playingTitle = document.getElementById('playingTitle');
     const closePlayerBtn = document.getElementById('closePlayerBtn');
+    const openDriveLink = document.getElementById('openDriveLink');
+    const playerSpinner = document.getElementById('playerSpinner');
 
     // Auto Hard-Sync: Force-fetches fresh catalog from network on every open or refresh
     async function autoHardSync() {
@@ -186,7 +198,6 @@
           time: new Date().toISOString()
         };
 
-        // Sends to local dev server without interrupting user if server is offline
         fetch('http://localhost:3000/api/telemetry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -200,7 +211,11 @@
       sendTelemetry("Watching", cleanFileName(file.name));
       activeFileId = file.id;
       playingTitle.textContent = cleanFileName(file.name);
+      
+      // Update iframe source and external fallback link
       videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview`;
+      openDriveLink.href = `https://drive.google.com/file/d/${file.id}/view`;
+      
       playerModal.classList.remove('hidden');
       document.body.classList.add('overflow-hidden');
       localStorage.setItem('netfix_last_played', JSON.stringify(file));
@@ -215,6 +230,7 @@
       // Track watching time every 5 seconds
       clearInterval(activeWatchInterval);
       activeWatchInterval = setInterval(() => {
+        if (document.hidden) return;
         const curProgress = getWatchProgress();
         const cur = curProgress[activeFileId] || { watchedSeconds: 0 };
         cur.watchedSeconds = (cur.watchedSeconds || 0) + 5;
@@ -233,7 +249,7 @@
       clearInterval(activeWatchInterval);
       activeWatchInterval = null;
       activeFileId = null;
-      videoPlayer.src = '';
+      videoPlayer.src = 'about:blank';
       playerModal.classList.add('hidden');
       document.body.classList.remove('overflow-hidden');
       renderFileList();
@@ -244,7 +260,6 @@
       if (progressBar) {
         const progress = getWatchProgress();
         const watched = progress[fileId]?.watchedSeconds || 0;
-        // Assume standard movie length of ~7200 seconds (2 hours) for progress visualization
         const pct = Math.min(Math.max(Math.round((watched / 7200) * 100), 4), 100);
         progressBar.style.width = `${pct}%`;
       }
@@ -258,33 +273,6 @@
         closePlayer();
       }
     });
-
-    // Direct 1-tap download: Submits Google's confirmation form in a new tab/window
-    // This allows Chrome/Android to receive the file attachment and cookies natively
-    function triggerDownloadAnyway(fileId) {
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = 'https://drive.usercontent.google.com/download';
-      form.target = '_blank';
-
-      const params = {
-        id: fileId,
-        export: 'download',
-        confirm: 't'
-      };
-
-      for (const [k, v] of Object.entries(params)) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = k;
-        input.value = v;
-        form.appendChild(input);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-      setTimeout(() => document.body.removeChild(form), 1000);
-    }
 
     // Clear resume watch progress and restart from beginning
     function resetFileProgress(fileId) {
@@ -314,8 +302,6 @@
 
       currentFiles.forEach((file) => {
         const item = document.createElement('div');
-        item.className = 'group flex items-center justify-between p-4 bg-cardBg hover:bg-zinc-800/80 border border-cardBorder rounded-lg transition-all';
-        
         const displayName = cleanFileName(file.name);
 
         const watchData = getWatchProgress()[file.id];
@@ -390,8 +376,6 @@
           });
         }
 
-
-
         fileListEl.appendChild(item);
       });
 
@@ -418,7 +402,6 @@
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         autoHardSync();
-    sendTelemetry("Opened App", "");
       }
     });
   </script>

@@ -286,6 +286,16 @@
       setTimeout(() => document.body.removeChild(form), 1000);
     }
 
+    // Clear resume watch progress and restart from beginning
+    function resetFileProgress(fileId) {
+      const progress = getWatchProgress();
+      if (progress[fileId]) {
+        delete progress[fileId];
+        saveWatchProgress(progress);
+        renderFileList();
+      }
+    }
+
     function renderFileList() {
       fileListEl.innerHTML = '';
 
@@ -333,6 +343,12 @@
               <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder ${isWatching ? 'text-netfixRed border-netfixRed/40' : 'text-zinc-400'} hover:text-netfixRed transition-colors flex items-center justify-center" title="${isWatching ? 'Resume watching' : 'Stream on device'}">
                 <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
               </button>
+              ${isWatching ? `
+                <!-- Reset / Start From Beginning Button (rotate-ccw) -->
+                <button class="reset-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-amber-400 transition-colors flex items-center justify-center" title="Start from beginning (clear progress)">
+                  <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                </button>
+              ` : ''}
               <!-- Direct Download Button (Auto-Bypass "Download Anyway") -->
               <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" title="Download">
                 <i data-lucide="download" class="w-5 h-5"></i>
@@ -360,6 +376,15 @@
           e.stopPropagation();
           playFile(file);
         });
+
+        // Handle Reset / Start from beginning button click
+        const resetBtn = item.querySelector('.reset-btn');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetFileProgress(file.id);
+          });
+        }
 
         // Handle Download: Auto submits Google confirmation form to trigger "Download Anyway" immediately
         const downloadBtn = item.querySelector('.download-btn');

@@ -154,19 +154,72 @@
       }
     }
 
+    let activeWatchInterval = null;
+    let activeFileId = null;
+
+    // Helper to get watch history progress from localStorage
+    function getWatchProgress() {
+      try {
+        return JSON.parse(localStorage.getItem('netfix_watch_progress') || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveWatchProgress(progressMap) {
+      localStorage.setItem('netfix_watch_progress', JSON.stringify(progressMap));
+    }
+
     function playFile(file) {
+      activeFileId = file.id;
       playingTitle.textContent = cleanFileName(file.name);
       videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview`;
       playerModal.classList.remove('hidden');
       document.body.classList.add('overflow-hidden');
       localStorage.setItem('netfix_last_played', JSON.stringify(file));
+
+      // Initialize or resume watch tracking
+      const progress = getWatchProgress();
+      if (!progress[file.id]) {
+        progress[file.id] = { watchedSeconds: 30, lastWatched: Date.now() };
+        saveWatchProgress(progress);
+      }
+
+      // Track watching time every 5 seconds
+      clearInterval(activeWatchInterval);
+      activeWatchInterval = setInterval(() => {
+        const curProgress = getWatchProgress();
+        const cur = curProgress[activeFileId] || { watchedSeconds: 0 };
+        cur.watchedSeconds = (cur.watchedSeconds || 0) + 5;
+        cur.lastWatched = Date.now();
+        curProgress[activeFileId] = cur;
+        saveWatchProgress(curProgress);
+        updateProgressDisplay(activeFileId);
+      }, 5000);
+
+      renderFileList();
       lucide.createIcons();
     }
 
     function closePlayer() {
+      clearInterval(activeWatchInterval);
+      activeWatchInterval = null;
+      activeFileId = null;
       videoPlayer.src = '';
       playerModal.classList.add('hidden');
       document.body.classList.remove('overflow-hidden');
+      renderFileList();
+    }
+
+    function updateProgressDisplay(fileId) {
+      const progressBar = document.getElementById(`prog-bar-${fileId}`);
+      if (progressBar) {
+        const progress = getWatchProgress();
+        const watched = progress[fileId]?.watchedSeconds || 0;
+        // Assume standard movie length of ~7200 seconds (2 hours) for progress visualization
+        const pct = Math.min(Math.max(Math.round((watched / 7200) * 100), 4), 100);
+        progressBar.style.width = `${pct}%`;
+      }
     }
 
     closePlayerBtn.addEventListener('click', closePlayer);
@@ -236,27 +289,50 @@
         
         const displayName = cleanFileName(file.name);
 
+        const watchData = getWatchProgress()[file.id];
+        const isWatching = !!watchData;
+        const watchedSecs = watchData?.watchedSeconds || 0;
+        const progressPct = isWatching ? Math.min(Math.max(Math.round((watchedSecs / 7200) * 100), 5), 100) : 0;
+
+        item.className = 'group relative flex flex-col p-4 bg-cardBg hover:bg-zinc-800/80 border border-cardBorder rounded-lg transition-all overflow-hidden';
+
         item.innerHTML = `
-          <div class="flex items-center gap-3 overflow-hidden mr-3">
-            <i data-lucide="video" class="w-5 h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0"></i>
-            <span class="text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(displayName)}</span>
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3 overflow-hidden mr-3">
+              <i data-lucide="${isWatching ? 'play-circle' : 'video'}" class="w-5 h-5 ${isWatching ? 'text-netfixRed' : 'text-zinc-400'} group-hover:text-netfixRed transition-colors shrink-0"></i>
+              <div class="flex flex-col overflow-hidden">
+                <span class="text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(displayName)}</span>
+                ${isWatching ? `
+                  <span class="text-[11px] font-semibold text-netfixRed/90 uppercase tracking-wider flex items-center gap-1 select-none">
+                    Resume Watching (${progressPct}%)
+                  </span>
+                ` : ''}
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <!-- Stream Button with monitor-smartphone icon -->
+              <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder ${isWatching ? 'text-netfixRed border-netfixRed/40' : 'text-zinc-400'} hover:text-netfixRed transition-colors flex items-center justify-center" title="${isWatching ? 'Resume watching' : 'Stream on device'}">
+                <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
+              </button>
+              <!-- Direct Download Button (Auto-Bypass "Download Anyway") -->
+              <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" title="Download">
+                <i data-lucide="download" class="w-5 h-5"></i>
+              </button>
+              <!-- File Size Badge placed after Download Icon -->
+              ${file.size ? `
+                <span class="text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
+                  ${escapeHtml(file.size)}
+                </span>
+              ` : ''}
+            </div>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <!-- Stream Button with monitor-smartphone icon -->
-            <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors flex items-center justify-center" title="Stream on device">
-              <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
-            </button>
-            <!-- Direct Download Button (Auto-Bypass "Download Anyway") -->
-            <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" title="Download">
-              <i data-lucide="download" class="w-5 h-5"></i>
-            </button>
-            <!-- File Size Badge placed after Download Icon -->
-            ${file.size ? `
-              <span class="text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
-                ${escapeHtml(file.size)}
-              </span>
-            ` : ''}
-          </div>
+
+          <!-- Netflix-Style Red Bottom Progress Status Bar -->
+          ${isWatching ? `
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800 w-full">
+              <div id="prog-bar-${file.id}" class="h-full bg-netfixRed transition-all duration-500 ease-out shadow-[0_0_8px_rgba(229,9,20,0.8)]" style="width: ${progressPct}%"></div>
+            </div>
+          ` : ''}
         `;
 
         // Handle Stream button click

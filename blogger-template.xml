@@ -9,10 +9,10 @@
   <meta content='yes' name='apple-mobile-web-app-capable'/>
   <meta content='black-translucent' name='apple-mobile-web-app-status-bar-style'/>
   <title>NETFIX</title>
+  <link href='https://77swapn.github.io/xdown/favicon.png' rel='icon' type='image/png'/>
+  <link href='https://77swapn.github.io/xdown/favicon.ico' rel='shortcut icon' type='image/x-icon'/>
+  <link href='https://77swapn.github.io/xdown/icons/icon-192.png' rel='apple-touch-icon'/>
   
-  <!-- Red Clapperboard Movie Favicon -->
-  <link href='data:image/svg+xml,&lt;svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"&gt;&lt;rect width="100" height="100" rx="20" fill="%230f0f0f"/&gt;&lt;text y=".78em" x="50%" text-anchor="middle" font-size="70"&gt;🎬&lt;/text&gt;&lt;/svg&gt;' rel='icon' type='image/svg+xml'/>
-
   <b:skin><![CDATA[
     /* Reset all Blogger layout, sidebars, headers, footers & attribution */
     *, *::before, *::after {
@@ -58,16 +58,20 @@
   </div>
 
   <!-- Edge-to-Edge Obfuscated App Frame -->
-  <iframe id='appFrame' allow='autoplay; fullscreen; encrypted-media; picture-in-picture' allowfullscreen='true'></iframe>
+  <iframe 
+    id='appFrame' 
+    allow='autoplay; fullscreen; encrypted-media; picture-in-picture' 
+    allowfullscreen='true'>
+  </iframe>
 
   <script type='text/javascript'>
     //<![CDATA[
     (function() {
-      // Base64 encoded URL for https://77swapn.github.io/xdown/
-      var _s = "aHR0cHM6Ly83N3N3YXBuLmdpdGh1Yi5pby94ZG93bi8=";
+      // Obfuscated source URL for https://77swapn.github.io/xdown/
+      var _0x = "aHR0cHM6Ly83N3N3YXBuLmdpdGh1Yi5pby94ZG93bi8=";
       var frame = document.getElementById('appFrame');
       if (frame) {
-        frame.src = atob(_s);
+        frame.src = atob(_0x);
       }
     })();
     //]]>

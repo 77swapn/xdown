@@ -2,164 +2,182 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0d0f12">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Family Cinema</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NETFIX</title>
+  
+  <!-- Google Font: Strait -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Strait&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            strait: ['Strait', 'sans-serif'],
+          },
+          colors: {
+            netfixRed: '#E50914',
+            darkBg: '#0f0f0f',
+            cardBg: '#181818',
+            cardBorder: '#272727'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
-  <!-- App Header -->
-  <header class="app-header">
-    <div class="header-container">
-      <div class="brand-title" id="homeBtn" role="button" tabindex="0">
-        <span class="brand-icon">🎬</span>
-        <div class="brand-text">
-          <h1>Family Cinema</h1>
-          <p class="brand-subtitle">One-Tap Movie Streaming</p>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button id="refreshBtn" class="icon-btn" title="Refresh library" aria-label="Refresh library">
-          🔄
-        </button>
-        <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">
-          ⚙️
-        </button>
-      </div>
+<body class="bg-darkBg text-zinc-100 min-h-screen flex flex-col font-sans selection:bg-netfixRed selection:text-white">
+
+  <!-- Header -->
+  <header class="w-full border-b border-cardBorder bg-black/60 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <i data-lucide="clapperboard" class="w-8 h-8 text-netfixRed"></i>
+      <h1 class="font-strait text-4xl sm:text-5xl tracking-widest text-netfixRed font-bold select-none cursor-pointer">
+        NETFIX
+      </h1>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <button id="refreshBtn" title="Refresh files" class="p-2.5 rounded-lg bg-cardBg hover:bg-zinc-800 border border-cardBorder transition-colors">
+        <i data-lucide="refresh-cw" class="w-5 h-5 text-zinc-400 hover:text-white"></i>
+      </button>
     </div>
   </header>
 
-  <!-- Sticky Top Video Player Section -->
-  <section id="playerSection" class="player-container hidden">
-    <div class="player-header">
-      <div class="now-playing-info">
-        <span class="playing-badge">NOW PLAYING</span>
-        <h2 id="nowPlayingTitle" class="now-playing-title">Movie Title</h2>
-      </div>
-      <button id="closePlayerBtn" class="btn-close-player" aria-label="Close Player">✕ Close</button>
-    </div>
+  <!-- Main Container -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
     
-    <div class="iframe-wrapper">
-      <iframe id="videoIframe" title="Video Player" allowfullscreen allow="autoplay"></iframe>
+    <!-- Video Player Preview Container (Hidden by default, shown when a movie is selected) -->
+    <div id="playerSection" class="hidden mb-8 rounded-xl overflow-hidden border border-cardBorder bg-black shadow-2xl">
+      <div class="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-cardBorder">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <i data-lucide="play-circle" class="w-5 h-5 text-netfixRed shrink-0"></i>
+          <span id="playingTitle" class="text-sm sm:text-base font-semibold truncate text-zinc-200">Playing</span>
+        </div>
+        <button id="closePlayerBtn" class="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors flex items-center gap-1">
+          <i data-lucide="x" class="w-4 h-4"></i> Close
+        </button>
+      </div>
+      <div class="relative w-full pb-[56.25%] bg-black">
+        <iframe id="videoPlayer" class="absolute inset-0 w-full h-full border-0" allowfullscreen allow="autoplay"></iframe>
+      </div>
     </div>
 
-    <!-- Quick native player fallback bar inside player view -->
-    <div class="player-actions-bar">
-      <div class="player-tip">
-        <span>💡 Having audio or subtitle trouble in the web player?</span>
+    <!-- Section Header -->
+    <div class="flex items-center justify-between mb-6 pb-2 border-b border-cardBorder/60">
+      <div class="flex items-center gap-2">
+        <i data-lucide="film" class="w-5 h-5 text-netfixRed"></i>
+        <h2 class="text-lg font-semibold tracking-wide text-zinc-300 uppercase">Available Files</h2>
       </div>
-      <a id="playerVlcFallbackBtn" class="btn-player-vlc" href="#" target="_blank" rel="noopener">
-        <span>🟠 Open This Movie in VLC</span>
-      </a>
+      <span id="fileCountBadge" class="text-xs font-mono bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full border border-cardBorder">0 files</span>
     </div>
-  </section>
 
-  <!-- Main Content Container -->
-  <main class="main-content">
-
-    <!-- Search & Filter Controls -->
-    <section class="search-section">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input 
-          type="text" 
-          id="searchInput" 
-          placeholder="Search movie or video title..." 
-          aria-label="Search movies"
-          autocomplete="off"
-        >
-        <button id="clearSearchBtn" class="clear-btn hidden" aria-label="Clear Search">✕</button>
-      </div>
-    </section>
-
-    <!-- Folder Navigation Breadcrumb -->
-    <nav id="breadcrumbs" class="breadcrumbs-container" aria-label="Folder Navigation">
-      <button class="breadcrumb-item active" data-folder="root">🏠 Home</button>
-    </nav>
-
-    <!-- Configuration Alert / Guide (Shown if API Key or Folder ID Missing) -->
-    <section id="setupNotice" class="setup-notice hidden">
-      <div class="setup-card">
-        <h3>⚠️ Setup Required</h3>
-        <p>Google Drive API Key or Folder ID is missing. Tap below to configure your credentials.</p>
-        <button id="openConfigBtn" class="btn-primary-large">⚙️ Setup API & Folder</button>
-      </div>
-    </section>
-
-    <!-- Recently Watched Section -->
-    <section id="recentSection" class="content-section hidden">
-      <div class="section-title-wrap">
-        <h2>🕒 Recently Watched</h2>
-        <button id="clearRecentBtn" class="btn-text-small">Clear</button>
-      </div>
-      <div id="recentGrid" class="media-grid"></div>
-    </section>
-
-    <!-- Library / Folder Content Section -->
-    <section id="librarySection" class="content-section">
-      <div class="section-title-wrap">
-        <h2 id="currentCategoryTitle">📁 Movies & Series</h2>
-        <span id="itemCountBadge" class="count-badge">0 items</span>
-      </div>
-
-      <!-- Loading Skeletons -->
-      <div id="loadingSkeleton" class="media-grid skeleton-grid">
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-      </div>
-
-      <!-- Empty State / Error Notification -->
-      <div id="emptyNotice" class="empty-state hidden">
-        <div class="empty-icon">📂</div>
-        <p id="emptyMessage">No videos found in this folder.</p>
-      </div>
-
-      <!-- Media Grid -->
-      <div id="mediaGrid" class="media-grid"></div>
-    </section>
+    <!-- List of File Names Only -->
+    <div id="fileList" class="flex flex-col gap-2.5">
+      <!-- File items will render here dynamically -->
+    </div>
   </main>
 
-  <!-- Settings / Configuration Modal -->
-  <div id="settingsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 id="settingsModalTitle">⚙️ Settings</h3>
-        <button id="closeSettingsModalBtn" class="btn-close-modal">✕</button>
-      </div>
-      <div class="modal-body">
-        <label for="cfgApiKey">
-          <strong>Google Drive API v3 Key:</strong>
-          <span class="subtext">Needs access to Google Drive API v3</span>
-        </label>
-        <input type="text" id="cfgApiKey" placeholder="AIzaSy..." spellcheck="false">
+  <script>
+    // Data list from your folder
+    const DEFAULT_FILES = [
+      { id: "1m5V1-GA_a35qWoepvbJTlUVcqGovkfKA", name: "Baby Do Die Do 2026.mkv" },
+      { id: "14iErC-cc2PYKiArlWwFj11jgdfKapGvg", name: "Dhamaal 4 2026.mkv" },
+      { id: "15uzaISsm2qBqVmZttJHY8p7FiQNjzfbI", name: "Gandhari 2026.mkv" },
+      { id: "1tkqIagYOndyOKCDx9XgeC_rFpc_Pcu91", name: "Ghamasaan 2026.mkv" }
+    ];
 
-        <label for="cfgFolderId">
-          <strong>Shared Folder ID:</strong>
-          <span class="subtext">From your shared Google Drive folder link</span>
-        </label>
-        <input type="text" id="cfgFolderId" placeholder="1A2B3C4D..." spellcheck="false">
+    // LocalStorage initialization
+    function getStoredFiles() {
+      const stored = localStorage.getItem('netfix_files');
+      if (stored) {
+        try { return JSON.parse(stored); } catch (e) {}
+      }
+      localStorage.setItem('netfix_files', JSON.stringify(DEFAULT_FILES));
+      return DEFAULT_FILES;
+    }
 
-        <div class="settings-guide">
-          <p>💡 Tip: Make sure your Drive folder access is set to <strong>"Anyone with the link can view"</strong>.</p>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="saveSettingsBtn" class="btn-primary-large">💾 Save Settings</button>
-      </div>
-    </div>
-  </div>
+    let currentFiles = getStoredFiles();
 
-  <!-- Toast Notification -->
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+    const fileListEl = document.getElementById('fileList');
+    const fileCountBadge = document.getElementById('fileCountBadge');
+    const playerSection = document.getElementById('playerSection');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const playingTitle = document.getElementById('playingTitle');
+    const closePlayerBtn = document.getElementById('closePlayerBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
 
-  <!-- Scripts -->
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+    function renderFileList() {
+      fileListEl.innerHTML = '';
+      fileCountBadge.textContent = `${currentFiles.length} files`;
+
+      currentFiles.forEach((file) => {
+        const item = document.createElement('div');
+        item.className = 'group flex items-center justify-between p-4 bg-cardBg hover:bg-zinc-800/80 border border-cardBorder rounded-lg transition-all cursor-pointer';
+        
+        item.innerHTML = `
+          <div class="flex items-center gap-3 overflow-hidden">
+            <i data-lucide="video" class="w-5 h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0"></i>
+            <span class="text-base text-zinc-200 group-hover:text-white font-medium truncate">${escapeHtml(file.name)}</span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="hidden sm:inline-flex text-xs px-2.5 py-1 rounded bg-zinc-900 text-zinc-400 border border-zinc-700/50 group-hover:border-netfixRed/40 group-hover:text-netfixRed transition-colors">
+              Play
+            </span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors"></i>
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          playFile(file);
+        });
+
+        fileListEl.appendChild(item);
+      });
+
+      // Refresh Lucide Icons after DOM updates
+      lucide.createIcons();
+    }
+
+    function playFile(file) {
+      playingTitle.textContent = file.name;
+      videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview`;
+      playerSection.classList.remove('hidden');
+      playerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      localStorage.setItem('netfix_last_played', JSON.stringify(file));
+      lucide.createIcons();
+    }
+
+    closePlayerBtn.addEventListener('click', () => {
+      videoPlayer.src = '';
+      playerSection.classList.add('hidden');
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      currentFiles = getStoredFiles();
+      renderFileList();
+    });
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Initial render
+    renderFileList();
+    lucide.createIcons();
+  </script>
 </body>
 </html>

@@ -88,12 +88,12 @@
   <iframe id="downloadFrame" class="hidden" style="display:none;"></iframe>
 
   <script>
-    // Data list from your folder
+    // Data list from your folder with verified file sizes
     const DEFAULT_FILES = [
-      { id: "1m5V1-GA_a35qWoepvbJTlUVcqGovkfKA", name: "Baby Do Die Do 2026.mkv" },
-      { id: "14iErC-cc2PYKiArlWwFj11jgdfKapGvg", name: "Dhamaal 4 2026.mkv" },
-      { id: "15uzaISsm2qBqVmZttJHY8p7FiQNjzfbI", name: "Gandhari 2026.mkv" },
-      { id: "1tkqIagYOndyOKCDx9XgeC_rFpc_Pcu91", name: "Ghamasaan 2026.mkv" }
+      { id: "1m5V1-GA_a35qWoepvbJTlUVcqGovkfKA", name: "Baby Do Die Do 2026.mkv", size: "676.7 MB" },
+      { id: "14iErC-cc2PYKiArlWwFj11jgdfKapGvg", name: "Dhamaal 4 2026.mkv", size: "1.14 GB" },
+      { id: "15uzaISsm2qBqVmZttJHY8p7FiQNjzfbI", name: "Gandhari 2026.mkv", size: "1.10 GB" },
+      { id: "1tkqIagYOndyOKCDx9XgeC_rFpc_Pcu91", name: "Ghamasaan 2026.mkv", size: "1.83 GB" }
     ];
 
     // Strip file extensions for clean display
@@ -150,9 +150,14 @@
         const displayName = cleanFileName(file.name);
 
         item.innerHTML = `
-          <div class="flex items-center gap-3 overflow-hidden mr-4">
+          <div class="flex items-center gap-3 overflow-hidden mr-3">
             <i data-lucide="video" class="w-5 h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0"></i>
             <span class="text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(displayName)}</span>
+            ${file.size ? `
+              <span class="text-[11px] font-mono tracking-tight text-zinc-400 border border-zinc-700/80 rounded px-1.5 py-0.5 shrink-0 select-none">
+                ${escapeHtml(file.size)}
+              </span>
+            ` : ''}
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <!-- Stream Button with monitor-smartphone icon -->

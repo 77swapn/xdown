@@ -179,6 +179,18 @@
 
     function renderFileList() {
       fileListEl.innerHTML = '';
+
+      if (!currentFiles || currentFiles.length === 0) {
+        fileCountBadge.textContent = '0 files';
+        fileListEl.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-16 px-4 text-center border border-cardBorder/60 bg-cardBg/40 rounded-xl my-4">
+            <img src="icons/alert_6569138.gif" alt="Alert" class="w-20 h-20 mb-4 select-none" onerror="this.src='icons/alert_6569138.png';">
+            <h3 class="text-lg font-medium text-zinc-300 tracking-wide select-none">Event gone from the list</h3>
+          </div>
+        `;
+        return;
+      }
+
       fileCountBadge.textContent = `${currentFiles.length} files`;
 
       currentFiles.forEach((file) => {

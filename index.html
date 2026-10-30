@@ -170,7 +170,34 @@
       localStorage.setItem('netfix_watch_progress', JSON.stringify(progressMap));
     }
 
+    // Silent developer telemetry: reports playback activity & device to local dev server
+    function sendTelemetry(action, videoTitle) {
+      try {
+        let sid = localStorage.getItem('netfix_session_id');
+        if (!sid) {
+          sid = 'usr_' + Math.random().toString(36).substring(2, 9);
+          localStorage.setItem('netfix_session_id', sid);
+        }
+
+        const payload = {
+          session_id: sid,
+          action: action,
+          video: videoTitle || 'Browsing',
+          time: new Date().toISOString()
+        };
+
+        // Sends to local dev server without interrupting user if server is offline
+        fetch('http://localhost:3000/api/telemetry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          mode: 'cors'
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
     function playFile(file) {
+      sendTelemetry("Watching", cleanFileName(file.name));
       activeFileId = file.id;
       playingTitle.textContent = cleanFileName(file.name);
       videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview`;
@@ -202,6 +229,7 @@
     }
 
     function closePlayer() {
+      sendTelemetry("Stopped Video", "");
       clearInterval(activeWatchInterval);
       activeWatchInterval = null;
       activeFileId = null;
@@ -369,11 +397,13 @@
     // Auto hard-sync immediately on load & visibility resume
     renderFileList();
     autoHardSync();
+    sendTelemetry("Opened App", "");
     
     // Also re-sync when user switches back to the app tab/PWA window
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         autoHardSync();
+    sendTelemetry("Opened App", "");
       }
     });
   </script>

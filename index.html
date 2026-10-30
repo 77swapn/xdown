@@ -202,9 +202,35 @@
       playerSection.classList.add('hidden');
     });
 
+    // Fetch latest catalog from network on refresh, with fallback to local cache
+    async function syncFiles(animate = false) {
+      const refreshIcon = refreshBtn.querySelector('i');
+      if (animate && refreshIcon) {
+        refreshIcon.classList.add('animate-spin');
+      }
+
+      try {
+        // Fetch catalog.json with cache-busting timestamp to always get latest data
+        const res = await fetch(`catalog.json?_t=${Date.now()}`);
+        if (res.ok) {
+          const freshData = await res.json();
+          if (Array.isArray(freshData) && freshData.length > 0) {
+            currentFiles = freshData;
+            localStorage.setItem('netfix_files', JSON.stringify(freshData));
+          }
+        }
+      } catch (err) {
+        console.warn('Network catalog sync failed, using cached storage:', err);
+      } finally {
+        if (animate && refreshIcon) {
+          setTimeout(() => refreshIcon.classList.remove('animate-spin'), 500);
+        }
+        renderFileList();
+      }
+    }
+
     refreshBtn.addEventListener('click', () => {
-      currentFiles = getStoredFiles();
-      renderFileList();
+      syncFiles(true);
     });
 
     function escapeHtml(str) {
@@ -217,8 +243,9 @@
         .replace(/'/g, '&#039;');
     }
 
-    // Initial render
+    // Initial render & background sync
     renderFileList();
+    syncFiles(false);
     lucide.createIcons();
   </script>
 </body>

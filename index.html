@@ -123,10 +123,20 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const downloadFrame = document.getElementById('downloadFrame');
 
-    // Trigger direct download without redirecting or navigating away
+    // Trigger direct 1-click download that bypasses Google's "File too large / Virus scan" warning page
     function triggerDownload(fileId) {
-      const directDownloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-      downloadFrame.src = directDownloadUrl;
+      // Direct media content delivery URL with confirm=t
+      const directUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+      
+      // Create a temporary link element to prompt native browser download manager
+      const link = document.createElement('a');
+      link.href = directUrl;
+      link.setAttribute('download', '');
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     function renderFileList() {

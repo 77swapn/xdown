@@ -164,10 +164,13 @@
             <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors" title="Stream on device">
               <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
             </button>
-            <!-- Direct Download Button with download icon -->
-            <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors" title="Download">
+            <!-- Direct Download Button with direct link -->
+            <a href="https://drive.usercontent.google.com/download?id=${file.id}&export=download&confirm=t&authuser=0" 
+               download="${displayName}"
+               class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" 
+               title="Download">
               <i data-lucide="download" class="w-5 h-5"></i>
-            </button>
+            </a>
           </div>
         `;
 
@@ -176,13 +179,6 @@
         streamBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           playFile(file);
-        });
-
-        // Handle Direct Download button click
-        const downloadBtn = item.querySelector('.download-btn');
-        downloadBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          triggerDownload(file.id);
         });
 
         fileListEl.appendChild(item);

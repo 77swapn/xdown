@@ -178,6 +178,42 @@
       }
     });
 
+    // Automatically clicks through "Download Anyway" in the background
+    function triggerDownloadAnyway(fileId) {
+      // Create hidden iframe target
+      let targetFrame = document.getElementById('autoDownloadFrame');
+      if (!targetFrame) {
+        targetFrame = document.createElement('iframe');
+        targetFrame.id = 'autoDownloadFrame';
+        targetFrame.style.display = 'none';
+        document.body.appendChild(targetFrame);
+      }
+
+      // Submit direct download form directly to Google usercontent
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'https://drive.usercontent.google.com/download';
+      form.target = 'autoDownloadFrame';
+
+      const params = {
+        id: fileId,
+        export: 'download',
+        confirm: 't'
+      };
+
+      for (const [k, v] of Object.entries(params)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = v;
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+    }
+
     function renderFileList() {
       fileListEl.innerHTML = '';
 
@@ -210,15 +246,10 @@
             <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors flex items-center justify-center" title="Stream on device">
               <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
             </button>
-            <!-- Direct Download Button -->
-            <a href="https://drive.google.com/uc?export=download&id=${file.id}"
-               target="_blank"
-               rel="noopener noreferrer"
-               download
-               class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" 
-               title="Download">
+            <!-- Direct Download Button (Auto-Bypass "Download Anyway") -->
+            <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" title="Download">
               <i data-lucide="download" class="w-5 h-5"></i>
-            </a>
+            </button>
             <!-- File Size Badge placed after Download Icon -->
             ${file.size ? `
               <span class="text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
@@ -233,6 +264,13 @@
         streamBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           playFile(file);
+        });
+
+        // Handle Download: Auto submits Google confirmation form to trigger "Download Anyway" immediately
+        const downloadBtn = item.querySelector('.download-btn');
+        downloadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          triggerDownloadAnyway(file.id);
         });
 
         fileListEl.appendChild(item);

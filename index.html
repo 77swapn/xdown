@@ -259,22 +259,13 @@
       }
     });
 
-    // Automatically clicks through "Download Anyway" in the background
+    // Direct 1-tap download: Submits Google's confirmation form in a new tab/window
+    // This allows Chrome/Android to receive the file attachment and cookies natively
     function triggerDownloadAnyway(fileId) {
-      // Create hidden iframe target
-      let targetFrame = document.getElementById('autoDownloadFrame');
-      if (!targetFrame) {
-        targetFrame = document.createElement('iframe');
-        targetFrame.id = 'autoDownloadFrame';
-        targetFrame.style.display = 'none';
-        document.body.appendChild(targetFrame);
-      }
-
-      // Submit direct download form directly to Google usercontent
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = 'https://drive.usercontent.google.com/download';
-      form.target = 'autoDownloadFrame';
+      form.target = '_blank';
 
       const params = {
         id: fileId,
@@ -292,7 +283,7 @@
 
       document.body.appendChild(form);
       form.submit();
-      document.body.removeChild(form);
+      setTimeout(() => document.body.removeChild(form), 1000);
     }
 
     function renderFileList() {

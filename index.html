@@ -36,17 +36,11 @@
 <body class="bg-darkBg text-zinc-100 min-h-screen flex flex-col font-sans selection:bg-netfixRed selection:text-white">
 
   <!-- Header -->
-  <header class="w-full border-b border-cardBorder bg-black/60 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+  <header class="w-full border-b border-cardBorder bg-black/60 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
     <div class="flex items-center">
       <h1 class="font-strait text-4xl sm:text-5xl tracking-widest text-netfixRed font-bold select-none cursor-pointer">
         NETFIX
       </h1>
-    </div>
-    
-    <div class="flex items-center gap-3">
-      <button id="refreshBtn" title="Refresh files" class="p-2.5 rounded-lg bg-cardBg hover:bg-zinc-800 border border-cardBorder transition-colors">
-        <i data-lucide="refresh-cw" class="w-5 h-5 text-zinc-400 hover:text-white"></i>
-      </button>
     </div>
   </header>
 
@@ -129,7 +123,31 @@
     const videoPlayer = document.getElementById('videoPlayer');
     const playingTitle = document.getElementById('playingTitle');
     const closePlayerBtn = document.getElementById('closePlayerBtn');
-    const refreshBtn = document.getElementById('refreshBtn');
+
+    // Auto Hard-Sync: Force-fetches fresh catalog from network on every open or refresh
+    async function autoHardSync() {
+      try {
+        const res = await fetch(`catalog.json?_nocache=${Date.now()}_${Math.random().toString(36).substring(2)}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+
+        if (res.ok) {
+          const freshData = await res.json();
+          if (Array.isArray(freshData) && freshData.length > 0) {
+            currentFiles = freshData;
+            localStorage.setItem('netfix_files', JSON.stringify(freshData));
+            renderFileList();
+          }
+        }
+      } catch (err) {
+        console.warn('Hard sync error:', err);
+      }
+    }
 
     function playFile(file) {
       playingTitle.textContent = cleanFileName(file.name);
@@ -207,37 +225,6 @@
       lucide.createIcons();
     }
 
-    // Fetch latest catalog from network on refresh, with fallback to local cache
-    async function syncFiles(animate = false) {
-      const refreshIcon = refreshBtn.querySelector('i');
-      if (animate && refreshIcon) {
-        refreshIcon.classList.add('animate-spin');
-      }
-
-      try {
-        // Fetch catalog.json with cache-busting timestamp to always get latest data
-        const res = await fetch(`catalog.json?_t=${Date.now()}`);
-        if (res.ok) {
-          const freshData = await res.json();
-          if (Array.isArray(freshData) && freshData.length > 0) {
-            currentFiles = freshData;
-            localStorage.setItem('netfix_files', JSON.stringify(freshData));
-          }
-        }
-      } catch (err) {
-        console.warn('Network catalog sync failed, using cached storage:', err);
-      } finally {
-        if (animate && refreshIcon) {
-          setTimeout(() => refreshIcon.classList.remove('animate-spin'), 500);
-        }
-        renderFileList();
-      }
-    }
-
-    refreshBtn.addEventListener('click', () => {
-      syncFiles(true);
-    });
-
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)
@@ -248,10 +235,16 @@
         .replace(/'/g, '&#039;');
     }
 
-    // Initial render & background sync
+    // Auto hard-sync immediately on load & visibility resume
     renderFileList();
-    syncFiles(false);
-    lucide.createIcons();
+    autoHardSync();
+    
+    // Also re-sync when user switches back to the app tab/PWA window
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        autoHardSync();
+      }
+    });
   </script>
 </body>
 </html>

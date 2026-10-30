@@ -123,20 +123,41 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const downloadFrame = document.getElementById('downloadFrame');
 
-    // Trigger direct 1-click download that bypasses Google's "File too large / Virus scan" warning page
-    function triggerDownload(fileId) {
-      // Direct media content delivery URL with confirm=t
-      const directUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
-      
-      // Create a temporary link element to prompt native browser download manager
-      const link = document.createElement('a');
-      link.href = directUrl;
-      link.setAttribute('download', '');
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    // Auto-resolving download function:
+    // Submits Google Drive's confirmation form in a hidden iframe so the file downloads immediately
+    function startDirectDownload(fileId) {
+      // Create hidden iframe if not already present
+      let iframe = document.getElementById('dlHiddenFrame');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'dlHiddenFrame';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+      }
+
+      // Create and submit POST form pointing to drive.usercontent.google.com/download
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'https://drive.usercontent.google.com/download';
+      form.target = 'dlHiddenFrame';
+
+      const fields = {
+        id: fileId,
+        export: 'download',
+        confirm: 't'
+      };
+
+      for (const [key, val] of Object.entries(fields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = val;
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
     }
 
     function renderFileList() {
@@ -153,25 +174,22 @@
           <div class="flex items-center gap-3 overflow-hidden mr-3">
             <i data-lucide="video" class="w-5 h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0"></i>
             <span class="text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(displayName)}</span>
-            ${file.size ? `
-              <span class="text-[11px] font-mono tracking-tight text-zinc-400 border border-zinc-700/80 rounded px-1.5 py-0.5 shrink-0 select-none">
-                ${escapeHtml(file.size)}
-              </span>
-            ` : ''}
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <!-- Stream Button with monitor-smartphone icon -->
-            <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors" title="Stream on device">
+            <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors flex items-center justify-center" title="Stream on device">
               <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
             </button>
-            <!-- Direct Download Button with uc?export=download link -->
-            <a href="https://drive.google.com/uc?export=download&id=${file.id}" 
-               target="_blank"
-               rel="noopener noreferrer"
-               class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" 
-               title="Download">
+            <!-- Direct Download Button -->
+            <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" title="Download">
               <i data-lucide="download" class="w-5 h-5"></i>
-            </a>
+            </button>
+            <!-- File Size Badge placed after Download Icon -->
+            ${file.size ? `
+              <span class="text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
+                ${escapeHtml(file.size)}
+              </span>
+            ` : ''}
           </div>
         `;
 
@@ -180,6 +198,13 @@
         streamBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           playFile(file);
+        });
+
+        // Handle Direct Download button click (auto-resolves Google's warning page)
+        const downloadBtn = item.querySelector('.download-btn');
+        downloadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          startDirectDownload(file.id);
         });
 
         fileListEl.appendChild(item);

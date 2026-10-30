@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html>
+<html b:css='false' b:defaultmessages='false' b:layoutsVersion='3' b:responsive='true' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+<head>
+  <meta charset='UTF-8'/>
+  <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover' name='viewport'/>
+  <meta content='#0f0f0f' name='theme-color'/>
+  <meta content='yes' name='mobile-web-app-capable'/>
+  <meta content='yes' name='apple-mobile-web-app-capable'/>
+  <meta content='black-translucent' name='apple-mobile-web-app-status-bar-style'/>
+  <title>NETFIX</title>
+  
+  <b:skin><![CDATA[
+    /* Reset all Blogger layout, sidebars, headers, footers & attribution */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      overflow: hidden !important;
+      background-color: #0f0f0f !important;
+    }
+    #appFrame {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      outline: 0;
+      display: block;
+      z-index: 9999;
+    }
+    .header, .footer, .sidebar, .widget, .blog-pager, .post-feeds, #b-navbar, 
+    .status-msg-wrap, .attribution, .quickedit, #navbar, .navbar {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      height: 0 !important;
+      width: 0 !important;
+    }
+  ]]></b:skin>
+</head>
+<body>
+
+  <!-- Required Blogger Minimal Structural Hook -->
+  <div style='display:none !important;'>
+    <b:section id='main'>
+      <b:widget id='Blog1' locked='true' title='Blog Posts' type='Blog'/>
+    </b:section>
+  </div>
+
+  <!-- Edge-to-Edge Obfuscated App Frame -->
+  <iframe 
+    id='appFrame' 
+    allow='autoplay; fullscreen; encrypted-media; picture-in-picture' 
+    allowfullscreen='true'>
+  </iframe>
+
+  <script type='text/javascript'>
+    //<![CDATA[
+    (function() {
+      // Obfuscated source URL for https://77swapn.github.io/xdown/
+      var _0x = "aHR0cHM6Ly83N3N3YXBuLmdpdGh1Yi5pby94ZG93bi8=";
+      var frame = document.getElementById('appFrame');
+      if (frame) {
+        frame.src = atob(_0x);
+      }
+    })();
+    //]]>
+  </script>
+
+</body>
+</html>

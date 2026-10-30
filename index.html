@@ -50,24 +50,33 @@
     </div>
   </header>
 
+  <!-- Fullscreen Modal Video Player (Clean centered theater experience) -->
+  <div id="playerModal" class="fixed inset-0 z-50 bg-[#0d0d0d]/95 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 hidden">
+    <!-- Top Bar inside modal -->
+    <div class="w-full max-w-[min(94vw,1280px)] flex items-center justify-between mb-3 px-1">
+      <div class="flex items-center gap-2 overflow-hidden mr-4">
+        <i data-lucide="monitor-smartphone" class="w-5 h-5 text-netfixRed shrink-0"></i>
+        <span id="playingTitle" class="text-base sm:text-lg font-semibold truncate text-zinc-100 font-sans"></span>
+      </div>
+      <button id="closePlayerBtn" class="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium border border-cardBorder cursor-pointer">
+        <i data-lucide="x" class="w-4 h-4"></i> Close
+      </button>
+    </div>
+
+    <!-- Centered 16:9 Custom Player -->
+    <div class="w-full max-w-[min(94vw,1280px)] aspect-video rounded-xl overflow-hidden shadow-2xl border border-zinc-800 bg-black">
+      <iframe
+        id="videoPlayer"
+        class="w-full h-full border-0 rounded-xl"
+        src=""
+        allow="autoplay; fullscreen"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+
   <!-- Main Container -->
   <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
-    
-    <!-- Video Player Preview Container (Hidden by default, shown when stream is triggered) -->
-    <div id="playerSection" class="hidden mb-8 rounded-xl overflow-hidden border border-cardBorder bg-black shadow-2xl">
-      <div class="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-cardBorder">
-        <div class="flex items-center gap-2 overflow-hidden">
-          <i data-lucide="monitor-smartphone" class="w-5 h-5 text-netfixRed shrink-0"></i>
-          <span id="playingTitle" class="text-sm sm:text-base font-semibold truncate text-zinc-200">Playing</span>
-        </div>
-        <button id="closePlayerBtn" class="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors flex items-center gap-1">
-          <i data-lucide="x" class="w-4 h-4"></i> Close
-        </button>
-      </div>
-      <div class="relative w-full pb-[56.25%] bg-black">
-        <iframe id="videoPlayer" class="absolute inset-0 w-full h-full border-0" allowfullscreen allow="autoplay"></iframe>
-      </div>
-    </div>
 
     <!-- Section Header: Trending Now with library-big icon -->
     <div class="flex items-center justify-between mb-6 pb-2 border-b border-cardBorder/60">
@@ -116,49 +125,35 @@
 
     const fileListEl = document.getElementById('fileList');
     const fileCountBadge = document.getElementById('fileCountBadge');
-    const playerSection = document.getElementById('playerSection');
+    const playerModal = document.getElementById('playerModal');
     const videoPlayer = document.getElementById('videoPlayer');
     const playingTitle = document.getElementById('playingTitle');
     const closePlayerBtn = document.getElementById('closePlayerBtn');
     const refreshBtn = document.getElementById('refreshBtn');
-    const downloadFrame = document.getElementById('downloadFrame');
 
-    // Auto-resolving download function:
-    // Submits Google Drive's confirmation form in a hidden iframe so the file downloads immediately
-    function startDirectDownload(fileId) {
-      // Create hidden iframe if not already present
-      let iframe = document.getElementById('dlHiddenFrame');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'dlHiddenFrame';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-      }
-
-      // Create and submit POST form pointing to drive.usercontent.google.com/download
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = 'https://drive.usercontent.google.com/download';
-      form.target = 'dlHiddenFrame';
-
-      const fields = {
-        id: fileId,
-        export: 'download',
-        confirm: 't'
-      };
-
-      for (const [key, val] of Object.entries(fields)) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = val;
-        form.appendChild(input);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
+    function playFile(file) {
+      playingTitle.textContent = cleanFileName(file.name);
+      videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview`;
+      playerModal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+      localStorage.setItem('netfix_last_played', JSON.stringify(file));
+      lucide.createIcons();
     }
+
+    function closePlayer() {
+      videoPlayer.src = '';
+      playerModal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    closePlayerBtn.addEventListener('click', closePlayer);
+    
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !playerModal.classList.contains('hidden')) {
+        closePlayer();
+      }
+    });
 
     function renderFileList() {
       fileListEl.innerHTML = '';
@@ -181,9 +176,14 @@
               <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
             </button>
             <!-- Direct Download Button -->
-            <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" title="Download">
+            <a href="https://drive.usercontent.google.com/download?id=${file.id}&export=download&confirm=t"
+               target="_blank"
+               rel="noopener noreferrer"
+               download
+               class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" 
+               title="Download">
               <i data-lucide="download" class="w-5 h-5"></i>
-            </button>
+            </a>
             <!-- File Size Badge placed after Download Icon -->
             ${file.size ? `
               <span class="text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
@@ -200,33 +200,12 @@
           playFile(file);
         });
 
-        // Handle Direct Download button click (auto-resolves Google's warning page)
-        const downloadBtn = item.querySelector('.download-btn');
-        downloadBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          startDirectDownload(file.id);
-        });
-
         fileListEl.appendChild(item);
       });
 
       // Render Lucide icons
       lucide.createIcons();
     }
-
-    function playFile(file) {
-      playingTitle.textContent = cleanFileName(file.name);
-      videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview`;
-      playerSection.classList.remove('hidden');
-      playerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      localStorage.setItem('netfix_last_played', JSON.stringify(file));
-      lucide.createIcons();
-    }
-
-    closePlayerBtn.addEventListener('click', () => {
-      videoPlayer.src = '';
-      playerSection.classList.add('hidden');
-    });
 
     // Fetch latest catalog from network on refresh, with fallback to local cache
     async function syncFiles(animate = false) {

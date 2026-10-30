@@ -37,8 +37,7 @@
 
   <!-- Header -->
   <header class="w-full border-b border-cardBorder bg-black/60 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <i data-lucide="clapperboard" class="w-8 h-8 text-netfixRed"></i>
+    <div class="flex items-center">
       <h1 class="font-strait text-4xl sm:text-5xl tracking-widest text-netfixRed font-bold select-none cursor-pointer">
         NETFIX
       </h1>
@@ -54,11 +53,11 @@
   <!-- Main Container -->
   <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
     
-    <!-- Video Player Preview Container (Hidden by default, shown when a movie is selected) -->
+    <!-- Video Player Preview Container (Hidden by default, shown when stream is triggered) -->
     <div id="playerSection" class="hidden mb-8 rounded-xl overflow-hidden border border-cardBorder bg-black shadow-2xl">
       <div class="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-cardBorder">
         <div class="flex items-center gap-2 overflow-hidden">
-          <i data-lucide="play-circle" class="w-5 h-5 text-netfixRed shrink-0"></i>
+          <i data-lucide="monitor-smartphone" class="w-5 h-5 text-netfixRed shrink-0"></i>
           <span id="playingTitle" class="text-sm sm:text-base font-semibold truncate text-zinc-200">Playing</span>
         </div>
         <button id="closePlayerBtn" class="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors flex items-center gap-1">
@@ -70,20 +69,23 @@
       </div>
     </div>
 
-    <!-- Section Header -->
+    <!-- Section Header: Trending Now with library-big icon -->
     <div class="flex items-center justify-between mb-6 pb-2 border-b border-cardBorder/60">
-      <div class="flex items-center gap-2">
-        <i data-lucide="film" class="w-5 h-5 text-netfixRed"></i>
-        <h2 class="text-lg font-semibold tracking-wide text-zinc-300 uppercase">Available Files</h2>
+      <div class="flex items-center gap-2.5">
+        <i data-lucide="library-big" class="w-5 h-5 text-netfixRed"></i>
+        <h2 class="text-lg font-semibold tracking-wide text-zinc-300 uppercase">Trending Now</h2>
       </div>
       <span id="fileCountBadge" class="text-xs font-mono bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full border border-cardBorder">0 files</span>
     </div>
 
-    <!-- List of File Names Only -->
+    <!-- List of File Names -->
     <div id="fileList" class="flex flex-col gap-2.5">
       <!-- File items will render here dynamically -->
     </div>
   </main>
+
+  <!-- Hidden iframe for instant direct downloads without opening intermediate pages -->
+  <iframe id="downloadFrame" class="hidden" style="display:none;"></iframe>
 
   <script>
     // Data list from your folder
@@ -93,6 +95,12 @@
       { id: "15uzaISsm2qBqVmZttJHY8p7FiQNjzfbI", name: "Gandhari 2026.mkv" },
       { id: "1tkqIagYOndyOKCDx9XgeC_rFpc_Pcu91", name: "Ghamasaan 2026.mkv" }
     ];
+
+    // Strip file extensions for clean display
+    function cleanFileName(filename) {
+      if (!filename) return '';
+      return filename.replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
+    }
 
     // LocalStorage initialization
     function getStoredFiles() {
@@ -113,6 +121,13 @@
     const playingTitle = document.getElementById('playingTitle');
     const closePlayerBtn = document.getElementById('closePlayerBtn');
     const refreshBtn = document.getElementById('refreshBtn');
+    const downloadFrame = document.getElementById('downloadFrame');
+
+    // Trigger direct download without redirecting or navigating away
+    function triggerDownload(fileId) {
+      const directDownloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+      downloadFrame.src = directDownloadUrl;
+    }
 
     function renderFileList() {
       fileListEl.innerHTML = '';
@@ -120,34 +135,50 @@
 
       currentFiles.forEach((file) => {
         const item = document.createElement('div');
-        item.className = 'group flex items-center justify-between p-4 bg-cardBg hover:bg-zinc-800/80 border border-cardBorder rounded-lg transition-all cursor-pointer';
+        item.className = 'group flex items-center justify-between p-4 bg-cardBg hover:bg-zinc-800/80 border border-cardBorder rounded-lg transition-all';
         
+        const displayName = cleanFileName(file.name);
+
         item.innerHTML = `
-          <div class="flex items-center gap-3 overflow-hidden">
+          <div class="flex items-center gap-3 overflow-hidden mr-4">
             <i data-lucide="video" class="w-5 h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0"></i>
-            <span class="text-base text-zinc-200 group-hover:text-white font-medium truncate">${escapeHtml(file.name)}</span>
+            <span class="text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(displayName)}</span>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <span class="hidden sm:inline-flex text-xs px-2.5 py-1 rounded bg-zinc-900 text-zinc-400 border border-zinc-700/50 group-hover:border-netfixRed/40 group-hover:text-netfixRed transition-colors">
-              Play
-            </span>
-            <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors"></i>
+            <!-- Stream Button with monitor-smartphone icon -->
+            <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors" title="Stream on device">
+              <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
+            </button>
+            <!-- Direct Download Button with download icon -->
+            <button class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors" title="Download">
+              <i data-lucide="download" class="w-5 h-5"></i>
+            </button>
           </div>
         `;
 
-        item.addEventListener('click', () => {
+        // Handle Stream button click
+        const streamBtn = item.querySelector('.stream-btn');
+        streamBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
           playFile(file);
+        });
+
+        // Handle Direct Download button click
+        const downloadBtn = item.querySelector('.download-btn');
+        downloadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          triggerDownload(file.id);
         });
 
         fileListEl.appendChild(item);
       });
 
-      // Refresh Lucide Icons after DOM updates
+      // Render Lucide icons
       lucide.createIcons();
     }
 
     function playFile(file) {
-      playingTitle.textContent = file.name;
+      playingTitle.textContent = cleanFileName(file.name);
       videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview`;
       playerSection.classList.remove('hidden');
       playerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });

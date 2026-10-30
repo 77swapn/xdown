@@ -1,10 +1,6 @@
 """
 NETFIX Local Developer Server & Telemetry Monitor
-Serves the web app locally and captures viewer telemetry logs:
-- Device / User-Agent details
-- Live status (online, playing, heartbeat)
-- Video title and playback timestamp
-Only visible on your local developer machine (http://localhost:3000/logs)
+Robust Multi-Threaded Server with SO_REUSEADDR support
 """
 
 import http.server
@@ -18,8 +14,6 @@ from datetime import datetime
 PORT = 3000
 LOG_FILE = "telemetry_logs.json"
 
-# In-memory session tracking for currently active / live viewers
-# session_id -> { "device": ..., "ip": ..., "video": ..., "last_ping": ..., "status": ... }
 active_sessions = {}
 
 def load_history():
@@ -34,7 +28,6 @@ def load_history():
 def append_log(event):
     history = load_history()
     history.append(event)
-    # keep last 500 events
     if len(history) > 500:
         history = history[-500:]
     with open(LOG_FILE, "w", encoding="utf-8") as f:
@@ -42,7 +35,6 @@ def append_log(event):
 
 class DevTelemetryHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
-        # Enable CORS so the live site (GitHub Pages or Blogger) can report viewer pings to your local dev dashboard if open
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
@@ -62,7 +54,6 @@ class DevTelemetryHandler(http.server.SimpleHTTPRequestHandler):
                 ip = self.client_address[0]
                 user_agent = self.headers.get('User-Agent', 'Unknown')
                 
-                # Format friendly device detection
                 ua_lower = user_agent.lower()
                 device_type = "Desktop / PC"
                 if "android" in ua_lower:
@@ -97,7 +88,6 @@ class DevTelemetryHandler(http.server.SimpleHTTPRequestHandler):
                     "action": action
                 }
 
-                # Update live memory table
                 active_sessions[session_id] = {
                     "session_id": session_id,
                     "device": f"{device_type} ({browser})",
@@ -108,7 +98,6 @@ class DevTelemetryHandler(http.server.SimpleHTTPRequestHandler):
                     "last_timestamp": time.time()
                 }
 
-                # Append to permanent local disk log
                 append_log(event)
 
                 self.send_response(200)
@@ -127,13 +116,11 @@ class DevTelemetryHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         
-        # Local-only admin dashboard: http://localhost:3000/logs
         if parsed.path == '/logs':
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.end_headers()
             
-            # Prune sessions older than 60 seconds for live status
             now = time.time()
             live_users = [s for s in active_sessions.values() if now - s['last_timestamp'] < 45]
             history = list(reversed(load_history()[-40:]))
@@ -223,8 +210,19 @@ class DevTelemetryHandler(http.server.SimpleHTTPRequestHandler):
 
         super().do_GET()
 
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
 if __name__ == '__main__':
-    with socketserver.TCPServer(("", PORT), DevTelemetryHandler) as httpd:
-        print(f"NETFIX Local Server & Monitor active at http://localhost:{PORT}")
-        print(f"Dev Monitor dashboard available at http://localhost:{PORT}/logs")
-        httpd.serve_forever()
+    # Ensure current directory is repository root
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        with ThreadedTCPServer(("", PORT), DevTelemetryHandler) as httpd:
+            print(f"=================================================")
+            print(f"NETFIX Dev Server running at: http://localhost:{PORT}")
+            print(f"Viewer Monitor Dashboard at:  http://localhost:{PORT}/logs")
+            print(f"=================================================")
+            httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nServer stopped.")

@@ -600,73 +600,100 @@
 
       fileCountBadge.textContent = `${currentFiles.length} files`;
 
+      // Group files by language (maintaining timestamp order of latest file per group)
+      const groups = {};
+      const groupOrder = [];
+
       currentFiles.forEach((file) => {
-        const item = document.createElement('div');
         const fileInfo = parseFileInfo(file.name);
+        const lang = fileInfo.language || 'OTHER';
+        if (!groups[lang]) {
+          groups[lang] = [];
+          groupOrder.push(lang);
+        }
+        groups[lang].push({ file, fileInfo });
+      });
 
-        item.className = 'group relative flex flex-col p-4 bg-cardBg hover:bg-zinc-800/80 active:bg-zinc-800 border border-cardBorder rounded-lg transition-all overflow-hidden cursor-pointer select-none';
+      groupOrder.forEach((lang, gIdx) => {
+        const items = groups[lang];
 
-        item.innerHTML = `
-          <div class="flex items-center justify-between w-full">
-            <div class="flex items-center gap-3 overflow-hidden mr-2 min-w-0 flex-1">
-              <i data-lucide="play-circle" class="w-5 h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0"></i>
-              <div class="flex items-center flex-wrap gap-2 overflow-hidden min-w-0 flex-1">
-                <span class="text-sm sm:text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(fileInfo.title)}</span>
-                ${fileInfo.language ? `
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-[#00f5d4]/10 text-[#00f5d4] border border-[#00f5d4]/40 tracking-wider uppercase select-none shrink-0 font-mono shadow-[0_0_8px_rgba(0,245,212,0.15)]">
-                    ${escapeHtml(fileInfo.language)}
+        // Group Separator Header
+        const sep = document.createElement('div');
+        sep.className = `flex items-center gap-3 pt-3 pb-1.5 ${gIdx > 0 ? 'mt-4 border-t border-cardBorder/60 pt-4' : 'mt-1'}`;
+        sep.innerHTML = `
+          <div class="w-1.5 h-4 bg-netfixRed rounded-full shrink-0"></div>
+          <h3 class="text-xs sm:text-sm font-bold tracking-wider uppercase text-zinc-200 font-mono">${escapeHtml(lang)}</h3>
+          <div class="h-px bg-zinc-800 flex-1"></div>
+          <span class="text-[11px] sm:text-xs font-mono text-zinc-500 shrink-0">${items.length} ${items.length === 1 ? 'title' : 'titles'}</span>
+        `;
+        fileListEl.appendChild(sep);
+
+        // Group items (1, 2, 3...)
+        items.forEach((itemData, idx) => {
+          const file = itemData.file;
+          const fileInfo = itemData.fileInfo;
+          const item = document.createElement('div');
+
+          item.className = 'group relative flex flex-col p-4 bg-cardBg hover:bg-zinc-800/80 active:bg-zinc-800 border border-cardBorder rounded-lg transition-all overflow-hidden cursor-pointer select-none';
+
+          item.innerHTML = `
+            <div class="flex items-center justify-between w-full">
+              <div class="flex items-center gap-3 overflow-hidden mr-2 min-w-0 flex-1">
+                <span class="w-5 text-center text-xs sm:text-sm font-mono font-bold text-zinc-500 group-hover:text-netfixRed transition-colors shrink-0">${idx + 1}</span>
+                <i data-lucide="play-circle" class="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0 hidden xs:inline-block"></i>
+                <div class="flex items-center flex-wrap gap-2 overflow-hidden min-w-0 flex-1">
+                  <span class="text-sm sm:text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(fileInfo.title)}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+                <!-- Stream Button with monitor-smartphone icon -->
+                <button class="stream-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors flex items-center justify-center cursor-pointer" title="Stream on device">
+                  <i data-lucide="monitor-smartphone" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                </button>
+                <!-- Direct Download / Drive File Link -->
+                <a href="https://drive.google.com/file/d/${file.id}/view" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="download-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center cursor-pointer" 
+                   title="Download / Open in Google Drive">
+                  <i data-lucide="download" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                </a>
+                <!-- File Size Badge placed after Download Icon (hidden on small screens to prevent overflow) -->
+                ${file.size ? `
+                  <span class="hidden sm:inline-block text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
+                    ${escapeHtml(file.size)}
                   </span>
                 ` : ''}
               </div>
             </div>
-            <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-              <!-- Stream Button with monitor-smartphone icon -->
-              <button class="stream-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors flex items-center justify-center cursor-pointer" title="Stream on device">
-                <i data-lucide="monitor-smartphone" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-              </button>
-              <!-- Direct Download / Drive File Link -->
-              <a href="https://drive.google.com/file/d/${file.id}/view" 
-                 target="_blank" 
-                 rel="noopener noreferrer"
-                 class="download-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center cursor-pointer" 
-                 title="Download / Open in Google Drive">
-                <i data-lucide="download" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-              </a>
-              <!-- File Size Badge placed after Download Icon (hidden on small screens to prevent overflow) -->
-              ${file.size ? `
-                <span class="hidden sm:inline-block text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
-                  ${escapeHtml(file.size)}
-                </span>
-              ` : ''}
-            </div>
-          </div>
-        `;
+          `;
 
-        // Pre-warm video on hover and touchstart
-        item.addEventListener('mouseenter', () => prewarmFile(file.id), { passive: true });
-        item.addEventListener('touchstart', () => prewarmFile(file.id), { passive: true });
+          // Pre-warm video on hover and touchstart
+          item.addEventListener('mouseenter', () => prewarmFile(file.id), { passive: true });
+          item.addEventListener('touchstart', () => prewarmFile(file.id), { passive: true });
 
-        // Tapping card opens player directly for instant playback
-        item.addEventListener('click', () => {
-          playFile(file);
-        });
-
-        // Handle Stream button click (stops card bubbling)
-        const streamBtn = item.querySelector('.stream-btn');
-        streamBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          playFile(file);
-        });
-
-        // Handle Download / Drive link click
-        const downloadBtn = item.querySelector('.download-btn');
-        if (downloadBtn) {
-          downloadBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
+          // Tapping card opens player directly for instant playback
+          item.addEventListener('click', () => {
+            playFile(file);
           });
-        }
 
-        fileListEl.appendChild(item);
+          // Handle Stream button click (stops card bubbling)
+          const streamBtn = item.querySelector('.stream-btn');
+          streamBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playFile(file);
+          });
+
+          // Handle Download / Drive link click
+          const downloadBtn = item.querySelector('.download-btn');
+          if (downloadBtn) {
+            downloadBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+            });
+          }
+
+          fileListEl.appendChild(item);
+        });
       });
 
       // Render Lucide icons

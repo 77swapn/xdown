@@ -2,11 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d0d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>NETFIX</title>
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  
+  <!-- High-Speed Video Streaming Preconnections & DNS-Prefetching -->
+  <link rel="preconnect" href="https://drive.google.com" crossorigin>
+  <link rel="preconnect" href="https://video-downloads.googleusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://ssl.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="https://drive.google.com">
+  <link rel="dns-prefetch" href="https://video-downloads.googleusercontent.com">
+  <link rel="dns-prefetch" href="https://lh3.googleusercontent.com">
   
   <!-- Google Font: Strait -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,6 +33,9 @@
     tailwind.config = {
       theme: {
         extend: {
+          screens: {
+            'xs': '420px',
+          },
           fontFamily: {
             strait: ['Strait', 'sans-serif'],
           },
@@ -35,56 +52,157 @@
 
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --app-dvh: 100dvh;
+    }
+    @supports not (height: 100dvh) {
+      :root {
+        --app-dvh: 100vh;
+      }
+    }
+    /* Dynamic Player Sizing: mathematically ensures 16:9 ratio NEVER overflows viewport height in landscape or portrait */
+    .player-box {
+      width: 100%;
+      max-width: min(98vw, 1280px, calc((var(--app-dvh) - 100px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      height: auto;
+      max-height: calc(var(--app-dvh) - 100px);
+      transform: translateZ(0);
+    }
+    /* Fullscreen Theater Mode */
+    .player-box.is-theater {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      border-radius: 0 !important;
+      border: none !important;
+      z-index: 60 !important;
+      aspect-ratio: auto !important;
+    }
+    /* Safe Area Insets for notched phones (iPhone, Galaxy S series, Pixel) */
+    .safe-modal {
+      padding-top: max(0.5rem, env(safe-area-inset-top));
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+      padding-left: max(0.5rem, env(safe-area-inset-left));
+      padding-right: max(0.5rem, env(safe-area-inset-right));
+    }
+    /* Smooth custom scrollbars */
+    #playerModal::-webkit-scrollbar {
+      width: 4px;
+    }
+    #playerModal::-webkit-scrollbar-thumb {
+      background: #272727;
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body class="bg-darkBg text-zinc-100 min-h-screen flex flex-col font-sans selection:bg-netfixRed selection:text-white">
 
   <!-- Header -->
-  <header class="w-full border-b border-cardBorder bg-black/60 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+  <header class="w-full border-b border-cardBorder bg-black/60 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between">
     <div class="flex items-center">
-      <h1 class="font-strait text-4xl sm:text-5xl tracking-widest text-netfixRed font-bold select-none cursor-pointer">
+      <h1 class="font-strait text-3xl sm:text-5xl tracking-widest text-netfixRed font-bold select-none cursor-pointer">
         NETFIX
       </h1>
     </div>
   </header>
 
   <!-- Fullscreen Modal Video Player (Clean centered theater experience) -->
-  <div id="playerModal" class="fixed inset-0 z-50 bg-[#0d0d0d]/95 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 hidden">
-    <!-- Top Bar inside modal -->
-    <div class="w-full max-w-[min(94vw,1280px)] flex items-center justify-between mb-3 px-1">
-      <div class="flex items-center gap-2 overflow-hidden mr-4">
-        <i data-lucide="monitor-smartphone" class="w-5 h-5 text-netfixRed shrink-0"></i>
-        <span id="playingTitle" class="text-base sm:text-lg font-semibold truncate text-zinc-100 font-sans"></span>
+  <div id="playerModal" class="fixed inset-0 z-50 bg-black/95 sm:bg-[#0d0d0d]/95 backdrop-blur-md flex flex-col items-center justify-start sm:justify-center p-1.5 sm:p-4 overflow-y-auto overflow-x-hidden safe-modal hidden">
+    
+    <!-- Player Content Wrapper with dynamic responsive sizing -->
+    <div id="playerContentWrapper" class="w-full flex flex-col items-center my-auto transition-all duration-200">
+      
+      <!-- Top Bar inside modal -->
+      <div id="playerTopBar" class="w-full max-w-[min(98vw,1280px,calc((var(--app-dvh)-100px)*16/9))] flex items-center justify-between mb-2 px-1">
+        <div class="flex items-center gap-2 overflow-hidden mr-2 min-w-0 flex-1">
+          <i data-lucide="monitor-smartphone" class="w-4 h-4 sm:w-5 sm:h-5 text-netfixRed shrink-0"></i>
+          <span id="playingTitle" class="text-xs sm:text-base font-semibold truncate text-zinc-100 font-sans flex items-center"></span>
+        </div>
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <!-- Direct External Google Drive fallback button -->
+          <a id="openDriveLink" href="#" target="_blank" rel="noopener noreferrer" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1 text-xs sm:text-sm font-medium border border-cardBorder cursor-pointer whitespace-nowrap" title="Open in Google Drive App for native hardware playback">
+            <i data-lucide="external-link" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            <span class="hidden xs:inline sm:inline">Drive App</span>
+          </a>
+          <!-- Theater / Fullscreen toggle button -->
+          <button id="theaterToggleBtn" class="px-2 sm:px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1 text-xs sm:text-sm font-medium border border-cardBorder cursor-pointer" title="Toggle Fullscreen Theater Mode">
+            <i id="theaterIcon" data-lucide="maximize" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            <span id="theaterLabel" class="hidden sm:inline">Theater</span>
+          </button>
+          <!-- Close button -->
+          <button id="closePlayerBtn" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1 text-xs sm:text-sm font-medium border border-cardBorder cursor-pointer">
+            <i data-lucide="x" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            <span>Close</span>
+          </button>
+        </div>
       </div>
-      <div class="flex items-center gap-2 ml-auto">
-        <!-- Direct External Google Drive fallback link -->
-        <a id="openDriveLink" href="#" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium border border-cardBorder cursor-pointer whitespace-nowrap" title="Open in Google Drive if embed is blocked">
-          <i data-lucide="external-link" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">Drive Player</span>
-        </a>
-        <button id="closePlayerBtn" class="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium border border-cardBorder cursor-pointer">
-          <i data-lucide="x" class="w-4 h-4"></i> Close
+
+      <!-- Centered 16:9 Custom Player Container with Dynamic Fit -->
+      <div id="videoContainer" class="player-box relative rounded-xl overflow-hidden shadow-2xl border border-zinc-800 bg-black flex items-center justify-center transition-all duration-200">
+        
+        <!-- Floating exit button for theater mode -->
+        <button id="theaterCloseFloatingBtn" class="hidden absolute top-3 right-3 z-30 p-2.5 rounded-full bg-black/80 hover:bg-zinc-800 text-white border border-zinc-700 shadow-xl cursor-pointer backdrop-blur-md" title="Exit Theater Mode">
+          <i data-lucide="minimize" class="w-5 h-5"></i>
         </button>
-      </div>
-    </div>
 
-    <!-- Centered 16:9 Custom Player with native error handling -->
-    <div class="relative w-full max-w-[min(94vw,1280px)] aspect-video rounded-xl overflow-hidden shadow-2xl border border-zinc-800 bg-black flex items-center justify-center">
-      <!-- Loading indicator behind iframe -->
-      <div id="playerSpinner" class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-zinc-500 bg-black pointer-events-none z-0">
-        <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-netfixRed"></i>
-        <span class="text-xs uppercase tracking-wider font-medium">Connecting video stream...</span>
+        <!-- Fast loading indicator with animated spinner & slow network assistant -->
+        <div id="playerSpinner" class="absolute inset-0 flex flex-col items-center justify-center gap-2.5 text-zinc-400 bg-black/95 z-20 transition-opacity duration-300">
+          <div class="relative flex items-center justify-center">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-zinc-800 border-t-netfixRed animate-spin"></div>
+            <i data-lucide="play" class="w-4 h-4 sm:w-5 sm:h-5 text-netfixRed absolute fill-current"></i>
+          </div>
+          <span id="playerStatusText" class="text-xs sm:text-sm font-medium tracking-wide text-zinc-300">Connecting fast video stream...</span>
+          <span class="text-[11px] text-zinc-500">Hardware acceleration active</span>
+          
+          <!-- Automatic slow-network helper appeared after 3.5s -->
+          <div id="slowNetworkNotice" class="hidden mt-1 flex flex-wrap items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-700/80 text-[11px] text-zinc-300 max-w-[90%] text-center">
+            <span>Taking longer than usual?</span>
+            <a id="spinnerDriveLink" href="#" target="_blank" class="text-netfixRed hover:underline font-semibold flex items-center gap-1">
+              <i data-lucide="external-link" class="w-3 h-3"></i> Drive App
+            </a>
+            <span class="text-zinc-600">|</span>
+            <a id="spinnerVlcLink" href="#" class="text-amber-400 hover:underline font-semibold flex items-center gap-1">
+              <i data-lucide="play" class="w-3 h-3"></i> External App
+            </a>
+          </div>
+        </div>
+
+        <!-- Iframe Player: Full permissions for hardware acceleration, uninhibited by sandbox -->
+        <iframe
+          id="videoPlayer"
+          class="relative z-10 w-full h-full border-0 rounded-xl"
+          src="about:blank"
+          title="Video player"
+          referrerpolicy="no-referrer"
+          loading="eager"
+          allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *; accelerometer *; gyroscope *"
+          allowfullscreen>
+        </iframe>
       </div>
 
-      <!-- Iframe Player -->
-      <iframe
-        id="videoPlayer"
-        class="relative z-10 w-full h-full border-0 rounded-xl"
-        src="about:blank"
-        title="Video player"
-        referrerpolicy="no-referrer"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-        allowfullscreen>
-      </iframe>
+      <!-- Mobile-Friendly Direct Streaming Hint / Fallback Bar -->
+      <div id="playerBottomBar" class="w-full max-w-[min(98vw,1280px,calc((var(--app-dvh)-100px)*16/9))] mt-2 px-1 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-zinc-400">
+        <div class="flex items-center gap-1.5 text-center sm:text-left">
+          <i data-lucide="info" class="w-3.5 h-3.5 text-zinc-500 shrink-0"></i>
+          <span>Mobile tip: Tap play inside player or tap <strong>Drive App</strong> for instant hardware stream.</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <a id="vlcIntentLink" href="#" class="text-zinc-300 hover:text-netfixRed transition-colors underline flex items-center gap-1" title="Open in VLC on Android">
+            <i data-lucide="play" class="w-3 h-3 text-netfixRed"></i> Open in VLC
+          </a>
+          <span class="text-zinc-600">|</span>
+          <a id="genericIntentLink" href="#" class="text-zinc-300 hover:text-netfixRed transition-colors underline flex items-center gap-1" title="Open in MX Player, Just Player, MPV, or Samsung Video">
+            <i data-lucide="external-link" class="w-3 h-3 text-amber-400"></i> Other Video Apps
+          </a>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -110,23 +228,78 @@
     // Verified active files from your Google Drive folder
     const DEFAULT_FILES = [
       {
-        "id": "1WlcrBRKLEQibT0_4hR3N0ilGbKj1970A",
-        "name": "Mirzapur The Movie 2026.mkv",
-        "size": "1.11 GB",
-        "mimeType": "video/x-matroska"
+            "id": "1zTtBzD1i1pCQW1RnXyIH2AL2ydSpXMej",
+            "name": "Bol Bol Rani 2026 (MR).mp4",
+            "size": "",
+            "mimeType": "video/mp4",
+            "duration": null
+      },
+      {
+            "id": "1WlcrBRKLEQibT0_4hR3N0ilGbKj1970A",
+            "name": "Mirzapur The Movie 2026 (HI).mkv",
+            "size": "",
+            "mimeType": "video/x-matroska",
+            "duration": 12676
+      },
+      {
+            "id": "1JTLaNIlEKRhmKttO2p8Kf46SUj2uY2bu",
+            "name": "Reporting Live 2026 (HI).mkv",
+            "size": "",
+            "mimeType": "video/x-matroska",
+            "duration": 6993
+      },
+      {
+            "id": "10qCuiUqNeda7JpczgpW2LluKJBlKImWl",
+            "name": "Salbardi 2026 (MR).mkv",
+            "size": "",
+            "mimeType": "video/x-matroska",
+            "duration": 8584
       }
-    ];
+];
 
-    // Strip file extensions for clean display
-    function cleanFileName(filename) {
-      if (!filename) return '';
-      return filename.replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
+    // Language Dictionary
+    const LANGUAGE_MAP = {
+      'HI': 'HINDI',
+      'HINDI': 'HINDI',
+      'HINIDI': 'HINDI',
+      'EN': 'ENGLISH',
+      'ENG': 'ENGLISH',
+      'ENGLISH': 'ENGLISH',
+      'MR': 'MARATHI',
+      'MARATHI': 'MARATHI',
+      'FR': 'FOREIGN',
+      'FOREIGN': 'FOREIGN'
+    };
+
+    // Parse filename to extract language code & format clean title
+    // Example: "Mirzapur The Movie 2026 (HI).mkv" => title: "Mirzapur The Movie 2026.mkv", language: "HINDI"
+    function parseFileInfo(filename) {
+      if (!filename) return { title: '', language: null };
+
+      const langRegex = /\s*[\(\[](HI|HINDI|HINIDI|EN|ENG|ENGLISH|MR|MARATHI|FR|FOREIGN)[\)\]]\s*/i;
+      const match = filename.match(langRegex);
+
+      if (match) {
+        const rawKey = match[1].toUpperCase();
+        const language = LANGUAGE_MAP[rawKey] || rawKey;
+        const title = filename
+          .replace(langRegex, ' ')
+          .replace(/\s+(\.[a-z0-9]+)$/i, (m, ext) => ext)
+          .replace(/\s+/g, ' ')
+          .trim();
+        return { title, language };
+      }
+
+      return { title: filename.trim(), language: null };
     }
 
     // LocalStorage initialization
     function getStoredFiles() {
-      // Prioritize active verified DEFAULT_FILES
-      try { localStorage.setItem('netfix_files', JSON.stringify(DEFAULT_FILES)); } catch (e) {}
+      try {
+        localStorage.setItem('netfix_files', JSON.stringify(DEFAULT_FILES));
+        // Clean up old watch progress to remove resume feature
+        localStorage.removeItem('netfix_watch_progress');
+      } catch (e) {}
       return DEFAULT_FILES;
     }
 
@@ -135,11 +308,51 @@
     const fileListEl = document.getElementById('fileList');
     const fileCountBadge = document.getElementById('fileCountBadge');
     const playerModal = document.getElementById('playerModal');
+    const videoContainer = document.getElementById('videoContainer');
     const videoPlayer = document.getElementById('videoPlayer');
     const playingTitle = document.getElementById('playingTitle');
     const closePlayerBtn = document.getElementById('closePlayerBtn');
     const openDriveLink = document.getElementById('openDriveLink');
+    const vlcIntentLink = document.getElementById('vlcIntentLink');
+    const genericIntentLink = document.getElementById('genericIntentLink');
     const playerSpinner = document.getElementById('playerSpinner');
+    const slowNetworkNotice = document.getElementById('slowNetworkNotice');
+    const spinnerDriveLink = document.getElementById('spinnerDriveLink');
+    const spinnerVlcLink = document.getElementById('spinnerVlcLink');
+    const theaterToggleBtn = document.getElementById('theaterToggleBtn');
+    const theaterCloseFloatingBtn = document.getElementById('theaterCloseFloatingBtn');
+    const theaterIcon = document.getElementById('theaterIcon');
+    const theaterLabel = document.getElementById('theaterLabel');
+    const playerTopBar = document.getElementById('playerTopBar');
+    const playerBottomBar = document.getElementById('playerBottomBar');
+
+    // Dynamic Viewport Dimensions Synchronizer (Handles orientation changes & mobile dynamic toolbars)
+    function syncViewportDimensions() {
+      const vh = window.innerHeight;
+      document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
+    }
+    window.addEventListener('resize', syncViewportDimensions, { passive: true });
+    window.addEventListener('orientationchange', syncViewportDimensions, { passive: true });
+    syncViewportDimensions();
+
+    // High-Speed Pre-warming for Zero-Lag Streaming
+    const prewarmedFiles = new Set();
+    function prewarmFile(fileId) {
+      if (!fileId || prewarmedFiles.has(fileId)) return;
+      prewarmedFiles.add(fileId);
+      try {
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.as = 'document';
+        link.href = `https://drive.google.com/file/d/${fileId}/preview`;
+        document.head.appendChild(link);
+      } catch (e) {}
+    }
+
+    // Pre-warm active movie immediately on page load
+    if (DEFAULT_FILES.length > 0) {
+      setTimeout(() => prewarmFile(DEFAULT_FILES[0].id), 800);
+    }
 
     // Auto Hard-Sync: Force-fetches fresh catalog from network on every open or refresh
     async function autoHardSync() {
@@ -159,6 +372,7 @@
             currentFiles = freshData;
             localStorage.setItem('netfix_files', JSON.stringify(freshData));
             renderFileList();
+            if (freshData[0]) prewarmFile(freshData[0].id);
           }
         }
       } catch (err) {
@@ -166,21 +380,9 @@
       }
     }
 
-    let activeWatchInterval = null;
     let activeFileId = null;
-
-    // Helper to get watch history progress from localStorage
-    function getWatchProgress() {
-      try {
-        return JSON.parse(localStorage.getItem('netfix_watch_progress') || '{}');
-      } catch (e) {
-        return {};
-      }
-    }
-
-    function saveWatchProgress(progressMap) {
-      localStorage.setItem('netfix_watch_progress', JSON.stringify(progressMap));
-    }
+    let spinnerTimeout = null;
+    let isTheaterMode = false;
 
     // Silent developer telemetry: reports playback activity & device to local dev server
     function sendTelemetry(action, videoTitle) {
@@ -207,62 +409,124 @@
       } catch (e) {}
     }
 
+    // Smooth Iframe Load Event Listener
+    videoPlayer.addEventListener('load', () => {
+      if (videoPlayer.src && !videoPlayer.src.includes('about:blank')) {
+        playerSpinner.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+          playerSpinner.classList.add('hidden');
+        }, 300);
+      }
+    });
+
+    // Theater / Fullscreen Mode Controller
+    function setTheaterMode(active) {
+      isTheaterMode = active;
+      if (active) {
+        videoContainer.classList.add('is-theater');
+        playerTopBar.classList.add('hidden');
+        playerBottomBar.classList.add('hidden');
+        theaterCloseFloatingBtn.classList.remove('hidden');
+        if (theaterIcon) theaterIcon.setAttribute('data-lucide', 'minimize');
+        if (theaterLabel) theaterLabel.textContent = 'Exit';
+
+        if (playerModal.requestFullscreen) {
+          playerModal.requestFullscreen().catch(() => {});
+        } else if (playerModal.webkitRequestFullscreen) {
+          playerModal.webkitRequestFullscreen();
+        }
+      } else {
+        videoContainer.classList.remove('is-theater');
+        playerTopBar.classList.remove('hidden');
+        playerBottomBar.classList.remove('hidden');
+        theaterCloseFloatingBtn.classList.add('hidden');
+        if (theaterIcon) theaterIcon.setAttribute('data-lucide', 'maximize');
+        if (theaterLabel) theaterLabel.textContent = 'Theater';
+
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function toggleTheaterMode() {
+      setTheaterMode(!isTheaterMode);
+    }
+
+    theaterToggleBtn.addEventListener('click', toggleTheaterMode);
+    theaterCloseFloatingBtn.addEventListener('click', () => setTheaterMode(false));
+
+    // Handle system fullscreen change (e.g. user pressed Escape or phone back button)
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && isTheaterMode) {
+        setTheaterMode(false);
+      }
+    });
+
     function playFile(file) {
-      sendTelemetry("Watching", cleanFileName(file.name));
+      prewarmFile(file.id);
+      const fileInfo = parseFileInfo(file.name);
+      sendTelemetry("Watching", fileInfo.title);
       activeFileId = file.id;
-      playingTitle.textContent = cleanFileName(file.name);
+
+      // Set playing title with clean badge
+      playingTitle.innerHTML = `
+        <span class="truncate">${escapeHtml(fileInfo.title)}</span>
+        ${fileInfo.language ? `
+          <span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold bg-netfixRed/20 text-netfixRed border border-netfixRed/40 font-mono tracking-wider uppercase shrink-0">
+            &lt;${escapeHtml(fileInfo.language)}&gt;
+          </span>
+        ` : ''}
+      `;
       
-      // Update iframe source and external fallback link
-      videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview`;
+      // Update iframe source, Drive app view link, and VLC intent URL
+      videoPlayer.src = `https://drive.google.com/file/d/${file.id}/preview?usp=drivesdk`;
       openDriveLink.href = `https://drive.google.com/file/d/${file.id}/view`;
+      spinnerDriveLink.href = `https://drive.google.com/file/d/${file.id}/view`;
+
+      // Android intent format
+      const isMkv = (file.name || '').toLowerCase().endsWith('.mkv');
+      const mime = isMkv ? 'video/x-matroska' : 'video/mp4';
+      const streamUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
+      const vlcUrl = `intent:${streamUrl}#Intent;action=android.intent.action.VIEW;type=${mime};package=org.videolan.vlc;end`;
+      const genericUrl = `intent:${streamUrl}#Intent;action=android.intent.action.VIEW;type=${mime};end`;
       
+      vlcIntentLink.href = vlcUrl;
+      spinnerVlcLink.href = vlcUrl;
+      genericIntentLink.href = genericUrl;
+      
+      // Show spinner with smooth transition
+      playerSpinner.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+      slowNetworkNotice.classList.add('hidden');
+      
+      clearTimeout(spinnerTimeout);
+      spinnerTimeout = setTimeout(() => {
+        if (!playerSpinner.classList.contains('hidden')) {
+          slowNetworkNotice.classList.remove('hidden');
+          lucide.createIcons();
+        }
+      }, 3500);
+
       playerModal.classList.remove('hidden');
       document.body.classList.add('overflow-hidden');
       localStorage.setItem('netfix_last_played', JSON.stringify(file));
 
-      // Initialize or resume watch tracking
-      const progress = getWatchProgress();
-      if (!progress[file.id]) {
-        progress[file.id] = { watchedSeconds: 30, lastWatched: Date.now() };
-        saveWatchProgress(progress);
-      }
-
-      // Track watching time every 5 seconds
-      clearInterval(activeWatchInterval);
-      activeWatchInterval = setInterval(() => {
-        if (document.hidden) return;
-        const curProgress = getWatchProgress();
-        const cur = curProgress[activeFileId] || { watchedSeconds: 0 };
-        cur.watchedSeconds = (cur.watchedSeconds || 0) + 5;
-        cur.lastWatched = Date.now();
-        curProgress[activeFileId] = cur;
-        saveWatchProgress(curProgress);
-        updateProgressDisplay(activeFileId);
-      }, 5000);
-
-      renderFileList();
       lucide.createIcons();
     }
 
     function closePlayer() {
       sendTelemetry("Stopped Video", "");
-      clearInterval(activeWatchInterval);
-      activeWatchInterval = null;
+      clearTimeout(spinnerTimeout);
       activeFileId = null;
+      if (isTheaterMode) {
+        setTheaterMode(false);
+      }
       videoPlayer.src = 'about:blank';
       playerModal.classList.add('hidden');
       document.body.classList.remove('overflow-hidden');
-      renderFileList();
-    }
-
-    function updateProgressDisplay(fileId) {
-      const progressBar = document.getElementById(`prog-bar-${fileId}`);
-      if (progressBar) {
-        const progress = getWatchProgress();
-        const watched = progress[fileId]?.watchedSeconds || 0;
-        const pct = Math.min(Math.max(Math.round((watched / 7200) * 100), 4), 100);
-        progressBar.style.width = `${pct}%`;
-      }
     }
 
     closePlayerBtn.addEventListener('click', closePlayer);
@@ -273,16 +537,6 @@
         closePlayer();
       }
     });
-
-    // Clear resume watch progress and restart from beginning
-    function resetFileProgress(fileId) {
-      const progress = getWatchProgress();
-      if (progress[fileId]) {
-        delete progress[fileId];
-        saveWatchProgress(progress);
-        renderFileList();
-      }
-    }
 
     function renderFileList() {
       fileListEl.innerHTML = '';
@@ -302,77 +556,67 @@
 
       currentFiles.forEach((file) => {
         const item = document.createElement('div');
-        const displayName = cleanFileName(file.name);
+        const fileInfo = parseFileInfo(file.name);
 
-        const watchData = getWatchProgress()[file.id];
-        const isWatching = !!watchData;
-        const watchedSecs = watchData?.watchedSeconds || 0;
-        const progressPct = isWatching ? Math.min(Math.max(Math.round((watchedSecs / 7200) * 100), 5), 100) : 0;
-
-        item.className = 'group relative flex flex-col p-4 bg-cardBg hover:bg-zinc-800/80 border border-cardBorder rounded-lg transition-all overflow-hidden';
+        item.className = 'group relative flex flex-col p-4 bg-cardBg hover:bg-zinc-800/80 active:bg-zinc-800 border border-cardBorder rounded-lg transition-all overflow-hidden cursor-pointer select-none';
 
         item.innerHTML = `
           <div class="flex items-center justify-between w-full">
-            <div class="flex items-center gap-3 overflow-hidden mr-3">
-              <i data-lucide="${isWatching ? 'play-circle' : 'video'}" class="w-5 h-5 ${isWatching ? 'text-netfixRed' : 'text-zinc-400'} group-hover:text-netfixRed transition-colors shrink-0"></i>
-              <div class="flex flex-col overflow-hidden">
-                <span class="text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(displayName)}</span>
-                ${isWatching ? `
-                  <span class="text-[11px] font-semibold text-netfixRed/90 uppercase tracking-wider flex items-center gap-1 select-none">
-                    Resume Watching (${progressPct}%)
+            <div class="flex items-center gap-3 overflow-hidden mr-2 min-w-0 flex-1">
+              <i data-lucide="play-circle" class="w-5 h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0"></i>
+              <div class="flex items-center flex-wrap gap-2 overflow-hidden min-w-0 flex-1">
+                <span class="text-sm sm:text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(fileInfo.title)}</span>
+                ${fileInfo.language ? `
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-netfixRed/15 text-netfixRed border border-netfixRed/40 tracking-wider uppercase select-none shrink-0 font-mono">
+                    &lt;${escapeHtml(fileInfo.language)}&gt;
                   </span>
                 ` : ''}
               </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex items-center gap-1 sm:gap-2 shrink-0">
               <!-- Stream Button with monitor-smartphone icon -->
-              <button class="stream-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder ${isWatching ? 'text-netfixRed border-netfixRed/40' : 'text-zinc-400'} hover:text-netfixRed transition-colors flex items-center justify-center" title="${isWatching ? 'Resume watching' : 'Stream on device'}">
-                <i data-lucide="monitor-smartphone" class="w-5 h-5"></i>
+              <button class="stream-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors flex items-center justify-center cursor-pointer" title="Stream on device">
+                <i data-lucide="monitor-smartphone" class="w-4 h-4 sm:w-5 sm:h-5"></i>
               </button>
-              ${isWatching ? `
-                <!-- Reset / Start From Beginning Button (rotate-ccw) -->
-                <button class="reset-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-amber-400 transition-colors flex items-center justify-center" title="Start from beginning (clear progress)">
-                  <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
-                </button>
-              ` : ''}
               <!-- Direct Download / Drive File Link -->
               <a href="https://drive.google.com/file/d/${file.id}/view" 
                  target="_blank" 
                  rel="noopener noreferrer"
-                 class="download-btn p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center" 
+                 class="download-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center cursor-pointer" 
                  title="Download / Open in Google Drive">
-                <i data-lucide="download" class="w-5 h-5"></i>
+                <i data-lucide="download" class="w-4 h-4 sm:w-5 sm:h-5"></i>
               </a>
-              <!-- File Size Badge placed after Download Icon -->
+              <!-- File Size Badge placed after Download Icon (hidden on small screens to prevent overflow) -->
               ${file.size ? `
-                <span class="text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
+                <span class="hidden sm:inline-block text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
                   ${escapeHtml(file.size)}
                 </span>
               ` : ''}
             </div>
           </div>
-
-          <!-- Netflix-Style Red Bottom Progress Status Bar -->
-          ${isWatching ? `
-            <div class="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800 w-full">
-              <div id="prog-bar-${file.id}" class="h-full bg-netfixRed transition-all duration-500 ease-out shadow-[0_0_8px_rgba(229,9,20,0.8)]" style="width: ${progressPct}%"></div>
-            </div>
-          ` : ''}
         `;
 
-        // Handle Stream button click
+        // Pre-warm video on hover and touchstart
+        item.addEventListener('mouseenter', () => prewarmFile(file.id), { passive: true });
+        item.addEventListener('touchstart', () => prewarmFile(file.id), { passive: true });
+
+        // Tapping card opens player directly for instant playback
+        item.addEventListener('click', () => {
+          playFile(file);
+        });
+
+        // Handle Stream button click (stops card bubbling)
         const streamBtn = item.querySelector('.stream-btn');
         streamBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           playFile(file);
         });
 
-        // Handle Reset / Start from beginning button click
-        const resetBtn = item.querySelector('.reset-btn');
-        if (resetBtn) {
-          resetBtn.addEventListener('click', (e) => {
+        // Handle Download / Drive link click
+        const downloadBtn = item.querySelector('.download-btn');
+        if (downloadBtn) {
+          downloadBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            resetFileProgress(file.id);
           });
         }
 

@@ -250,6 +250,51 @@
     // Verified active files from your Google Drive folder in Drive timestamp sequence
     const DEFAULT_FILES = [
       {
+            "id": "1zS48yw38Uc7E9x_1-6zDbwqibr_iuzEC",
+            "name": "Akka The Protectors Season 1 Episode 03 (HI).mkv",
+            "size": "565.1 MB",
+            "mimeType": "video/x-matroska",
+            "timestamp": 1793605134173,
+            "createdTime": 1793605134173,
+            "modifiedTime": 1793385488300
+      },
+      {
+            "id": "1OXCCFv-k2TxXErnP3kOCz5NKBOgq60X3",
+            "name": "Akka The Protectors Season 1 Episode 02 (HI).mkv",
+            "size": "680.9 MB",
+            "mimeType": "video/x-matroska",
+            "timestamp": 1793605003641,
+            "createdTime": 1793605003641,
+            "modifiedTime": 1793384534613
+      },
+      {
+            "id": "13gZhosJuBkbbu0S0W0-TpYggG7D9FLWK",
+            "name": "Akka The Protectors Season 1 Episode 04 (HI).mkv",
+            "size": "695.5 MB",
+            "mimeType": "video/x-matroska",
+            "timestamp": 1793604843139,
+            "createdTime": 1793604843139,
+            "modifiedTime": 1793385576659
+      },
+      {
+            "id": "1i30l3JJ2Lpugn781H8-OS9_PpZmSz4AT",
+            "name": "Akka The Protectors Season 1 Episode 05 (HI).mkv",
+            "size": "861.4 MB",
+            "mimeType": "video/x-matroska",
+            "timestamp": 1793604683923,
+            "createdTime": 1793604683923,
+            "modifiedTime": 1793385627732
+      },
+      {
+            "id": "1sZeKfeAsgYJrLwhnjvCFUNtfNbBlK18H",
+            "name": "Akka The Protectors Season 1 Episode 01 (HI).mkv",
+            "size": "1.06 GB",
+            "mimeType": "video/x-matroska",
+            "timestamp": 1793604482665,
+            "createdTime": 1793604482665,
+            "modifiedTime": 1793384610689
+      },
+      {
             "id": "1K6QUnhib74SQiJvlBMDBBHVb0PKXpgty",
             "name": "The Paradise 2026 (HI).mkv",
             "size": "1.71 GB",
@@ -321,24 +366,72 @@
 
     // Parse filename to extract language code & format clean title
     // Example: "Mirzapur The Movie 2026 (HI).mkv" => title: "Mirzapur The Movie 2026.mkv", language: "HINDI"
+    // Parse filename to extract media metadata (Movies, TV Series, Seasons, Episodes, Language)
     function parseFileInfo(filename) {
-      if (!filename) return { title: '', language: null };
+      if (!filename) return { title: '', language: null, isSeries: false };
 
       const langRegex = /\s*[\(\[](HI|HINDI|HINIDI|EN|ENG|ENGLISH|MR|MARATHI|FR|FOREIGN)[\)\]]\s*/i;
-      const match = filename.match(langRegex);
+      let language = null;
+      let cleanFilename = filename;
 
-      if (match) {
-        const rawKey = match[1].toUpperCase();
-        const language = LANGUAGE_MAP[rawKey] || rawKey;
-        const title = filename
-          .replace(langRegex, ' ')
-          .replace(/\s+(\.[a-z0-9]+)$/i, (m, ext) => ext)
-          .replace(/\s+/g, ' ')
-          .trim();
-        return { title, language };
+      const langMatch = filename.match(langRegex);
+      if (langMatch) {
+        const rawKey = langMatch[1].toUpperCase();
+        language = LANGUAGE_MAP[rawKey] || rawKey;
+        cleanFilename = filename.replace(langRegex, ' ');
       }
 
-      return { title: filename.trim(), language: null };
+      // Check for file extension
+      const nameWithoutExt = cleanFilename.replace(/\.[a-z0-9]+$/i, '').trim();
+
+      // Series & Episode Detection Patterns:
+      // Pattern 1: S01E02 or S1E02 or S01EP02
+      const sPattern1 = /^(.*?)(?:[\s._-]+|\b)S(\d{1,2})[\s._-]*E(?:P)?(\d{1,3})(?:[\s._-]+(.*))?$/i;
+      // Pattern 2: Season 1 Episode 2
+      const sPattern2 = /^(.*?)(?:[\s._-]+|\b)Season[\s._-]*(\d{1,2})[\s._-]*(?:Episode|Ep)?[\s._-]*(\d{1,3})(?:[\s._-]+(.*))?$/i;
+      // Pattern 3: 1x02
+      const sPattern3 = /^(.*?)(?:[\s._-]+|\b)(\d{1,2})x(\d{1,3})(?:[\s._-]+(.*))?$/i;
+
+      const seriesMatch = nameWithoutExt.match(sPattern1) || nameWithoutExt.match(sPattern2) || nameWithoutExt.match(sPattern3);
+
+      if (seriesMatch) {
+        const seriesRaw = (seriesMatch[1] || '').trim();
+        const seasonNum = parseInt(seriesMatch[2], 10);
+        const episodeNum = parseInt(seriesMatch[3], 10);
+        const epTitleRaw = (seriesMatch[4] || '').trim();
+
+        const seriesTitle = seriesRaw.replace(/[\._]/g, ' ').replace(/\s+/g, ' ').trim() || 'Series';
+        const episodeTitle = epTitleRaw.replace(/[\._]/g, ' ').replace(/\s+/g, ' ').trim();
+
+        let displayTitle = `${seriesTitle} S${String(seasonNum).padStart(2, '0')}E${String(episodeNum).padStart(2, '0')}`;
+        if (episodeTitle) {
+          displayTitle += ` - ${episodeTitle}`;
+        }
+
+        return {
+          title: displayTitle,
+          rawTitle: filename,
+          language: language,
+          isSeries: true,
+          seriesTitle: seriesTitle,
+          season: seasonNum,
+          episode: episodeNum,
+          episodeTitle: episodeTitle ? `${episodeTitle}` : `Episode ${episodeNum}`
+        };
+      }
+
+      // Standalone Movie
+      const title = cleanFilename
+        .replace(/\s+(\.[a-z0-9]+)$/i, (m, ext) => ext)
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      return {
+        title: title,
+        rawTitle: filename,
+        language: language,
+        isSeries: false
+      };
     }
 
     // Sort files strictly by timestamp from Google Drive (newest timestamp first)
@@ -628,7 +721,7 @@
         hasAnimatedEntrance = true;
       }
 
-      // Group files by language (maintaining timestamp order of latest file per group)
+      // Group files by language (maintaining timestamp order of latest file per language)
       const groups = {};
       const groupOrder = [];
 
@@ -642,105 +735,295 @@
         groups[lang].push({ file, fileInfo });
       });
 
-      let globalIndex = 0;
+      let globalAnimIndex = 0;
       const baseDelay = 0.04;
       const staggerDelay = 0.06;
 
       groupOrder.forEach((lang, gIdx) => {
-        const items = groups[lang];
+        const groupFiles = groups[lang];
+
+        // Within this language, group TV Series vs Standalone Movies
+        const seriesMap = new Map();
+        const entries = [];
+
+        groupFiles.forEach((item) => {
+          const { file, fileInfo } = item;
+          if (fileInfo.isSeries) {
+            const seriesKey = fileInfo.seriesTitle.toLowerCase();
+            if (!seriesMap.has(seriesKey)) {
+              const seriesEntry = {
+                type: 'series',
+                seriesTitle: fileInfo.seriesTitle,
+                seasons: {},
+                latestTimestamp: Number(file.timestamp || file.createdTime || 0),
+                totalEpisodes: 0
+              };
+              seriesMap.set(seriesKey, seriesEntry);
+              entries.push(seriesEntry);
+            }
+            const sEntry = seriesMap.get(seriesKey);
+            const sNum = fileInfo.season;
+            if (!sEntry.seasons[sNum]) {
+              sEntry.seasons[sNum] = [];
+            }
+            sEntry.seasons[sNum].push({ file, fileInfo });
+            sEntry.totalEpisodes++;
+            sEntry.latestTimestamp = Math.max(sEntry.latestTimestamp, Number(file.timestamp || file.createdTime || 0));
+          } else {
+            entries.push({
+              type: 'movie',
+              file: file,
+              fileInfo: fileInfo,
+              latestTimestamp: Number(file.timestamp || file.createdTime || 0)
+            });
+          }
+        });
+
+        // Sort entries by newest timestamp
+        entries.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
 
         // Group Separator Header
         const sep = document.createElement('div');
         const sepAnimClass = shouldAnimate ? 'animate-cascade-down' : '';
         sep.className = `flex items-center gap-3 pt-3 pb-1.5 ${sepAnimClass} ${gIdx > 0 ? 'mt-4 border-t border-cardBorder/60 pt-4' : 'mt-1'}`;
         if (shouldAnimate) {
-          sep.style.animationDelay = `${(baseDelay + globalIndex * staggerDelay).toFixed(3)}s`;
+          sep.style.animationDelay = `${(baseDelay + globalAnimIndex * staggerDelay).toFixed(3)}s`;
         }
         sep.innerHTML = `
           <div class="w-1.5 h-4 bg-netfixRed rounded-full shrink-0"></div>
           <h3 class="text-xs sm:text-sm font-bold tracking-wider uppercase text-zinc-200 font-mono">${escapeHtml(lang)}</h3>
           <div class="h-px bg-zinc-800 flex-1"></div>
-          <span class="text-[11px] sm:text-xs font-mono text-zinc-500 shrink-0">${items.length} ${items.length === 1 ? 'title' : 'titles'}</span>
+          <span class="text-[11px] sm:text-xs font-mono text-zinc-500 shrink-0">${entries.length} ${entries.length === 1 ? 'title' : 'titles'} • ${groupFiles.length} files</span>
         `;
         fileListEl.appendChild(sep);
-        globalIndex++;
+        globalAnimIndex++;
 
-        // Group items (1, 2, 3...)
-        items.forEach((itemData, idx) => {
-          const file = itemData.file;
-          const fileInfo = itemData.fileInfo;
-          const item = document.createElement('div');
+        // Render each entry (Movie or Model 1 Expandable Series Card)
+        entries.forEach((entry, entryIdx) => {
+          if (entry.type === 'movie') {
+            const file = entry.file;
+            const fileInfo = entry.fileInfo;
+            const item = document.createElement('div');
 
-          const itemAnimClass = shouldAnimate ? 'animate-cascade-down' : '';
-          item.className = `group relative flex flex-col p-4 bg-cardBg hover:bg-zinc-800/80 active:bg-zinc-800 border border-cardBorder rounded-lg transition-colors overflow-hidden cursor-pointer select-none ${itemAnimClass}`;
-          if (shouldAnimate) {
-            item.style.animationDelay = `${(baseDelay + globalIndex * staggerDelay).toFixed(3)}s`;
-          }
+            const itemAnimClass = shouldAnimate ? 'animate-cascade-down' : '';
+            item.className = `group relative flex flex-col p-4 bg-cardBg hover:bg-zinc-800/80 active:bg-zinc-800 border border-cardBorder rounded-lg transition-colors overflow-hidden cursor-pointer select-none ${itemAnimClass}`;
+            if (shouldAnimate) {
+              item.style.animationDelay = `${(baseDelay + globalAnimIndex * staggerDelay).toFixed(3)}s`;
+            }
 
-          item.innerHTML = `
-            <div class="flex items-center justify-between w-full">
-              <div class="flex items-center gap-3 overflow-hidden mr-2 min-w-0 flex-1">
-                <span class="w-5 text-center text-xs sm:text-sm font-mono font-bold text-zinc-500 group-hover:text-netfixRed transition-colors shrink-0">${idx + 1}</span>
-                <i data-lucide="play-circle" class="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0 hidden xs:inline-block"></i>
-                <div class="flex items-center flex-wrap gap-2 overflow-hidden min-w-0 flex-1">
-                  <span class="text-sm sm:text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(fileInfo.title)}</span>
+            item.innerHTML = `
+              <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-3 overflow-hidden mr-2 min-w-0 flex-1">
+                  <span class="w-5 text-center text-xs sm:text-sm font-mono font-bold text-zinc-500 group-hover:text-netfixRed transition-colors shrink-0">${entryIdx + 1}</span>
+                  <i data-lucide="play-circle" class="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-netfixRed transition-colors shrink-0 hidden xs:inline-block"></i>
+                  <div class="flex items-center flex-wrap gap-2 overflow-hidden min-w-0 flex-1">
+                    <span class="text-sm sm:text-base text-zinc-200 group-hover:text-white font-medium truncate select-none">${escapeHtml(fileInfo.title)}</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+                  <button class="stream-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors flex items-center justify-center cursor-pointer" title="Stream on device">
+                    <i data-lucide="monitor-smartphone" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                  </button>
+                  <a href="https://drive.google.com/file/d/${file.id}/view" target="_blank" rel="noopener noreferrer" class="download-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center cursor-pointer" title="Download / Open in Google Drive">
+                    <i data-lucide="download" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                  </a>
+                  ${file.size ? `
+                    <span class="hidden sm:inline-block text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
+                      ${escapeHtml(file.size)}
+                    </span>
+                  ` : ''}
                 </div>
               </div>
-              <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-                <!-- Stream Button with monitor-smartphone icon -->
-                <button class="stream-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors flex items-center justify-center cursor-pointer" title="Stream on device">
-                  <i data-lucide="monitor-smartphone" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                </button>
-                <!-- Direct Download / Drive File Link -->
-                <a href="https://drive.google.com/file/d/${file.id}/view" 
-                   target="_blank" 
-                   rel="noopener noreferrer"
-                   class="download-btn p-2 sm:p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors flex items-center justify-center cursor-pointer" 
-                   title="Download / Open in Google Drive">
-                  <i data-lucide="download" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                </a>
-                <!-- File Size Badge placed after Download Icon (hidden on small screens to prevent overflow) -->
-                ${file.size ? `
-                  <span class="hidden sm:inline-block text-[12px] font-mono tracking-tight text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded-md px-2 py-1 select-none whitespace-nowrap">
-                    ${escapeHtml(file.size)}
-                  </span>
-                ` : ''}
-              </div>
-            </div>
-          `;
+            `;
 
-          // Pre-warm video on hover and touchstart
-          item.addEventListener('mouseenter', () => prewarmFile(file.id), { passive: true });
-          item.addEventListener('touchstart', () => prewarmFile(file.id), { passive: true });
+            item.addEventListener('mouseenter', () => prewarmFile(file.id), { passive: true });
+            item.addEventListener('touchstart', () => prewarmFile(file.id), { passive: true });
+            item.addEventListener('click', () => playFile(file));
 
-          // Tapping card opens player directly for instant playback
-          item.addEventListener('click', () => {
-            playFile(file);
-          });
-
-          // Handle Stream button click (stops card bubbling)
-          const streamBtn = item.querySelector('.stream-btn');
-          streamBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            playFile(file);
-          });
-
-          // Handle Download / Drive link click
-          const downloadBtn = item.querySelector('.download-btn');
-          if (downloadBtn) {
-            downloadBtn.addEventListener('click', (e) => {
+            const streamBtn = item.querySelector('.stream-btn');
+            streamBtn.addEventListener('click', (e) => {
               e.stopPropagation();
+              playFile(file);
             });
-          }
 
-          fileListEl.appendChild(item);
-          globalIndex++;
+            const downloadBtn = item.querySelector('.download-btn');
+            if (downloadBtn) {
+              downloadBtn.addEventListener('click', (e) => e.stopPropagation());
+            }
+
+            fileListEl.appendChild(item);
+            globalAnimIndex++;
+
+          } else if (entry.type === 'series') {
+            // Model 1: Expandable Series Card (Accordion)
+            const series = entry;
+            const seasonKeys = Object.keys(series.seasons).map(Number).sort((a, b) => a - b);
+            let activeSeason = seasonKeys[0] || 1;
+
+            // Sort episodes in each season
+            seasonKeys.forEach(s => {
+              series.seasons[s].sort((a, b) => a.fileInfo.episode - b.fileInfo.episode);
+            });
+
+            const seriesContainer = document.createElement('div');
+            const itemAnimClass = shouldAnimate ? 'animate-cascade-down' : '';
+            seriesContainer.className = `border border-cardBorder rounded-lg overflow-hidden bg-cardBg transition-all select-none ${itemAnimClass}`;
+            if (shouldAnimate) {
+              seriesContainer.style.animationDelay = `${(baseDelay + globalAnimIndex * staggerDelay).toFixed(3)}s`;
+            }
+
+            const seasonCount = seasonKeys.length;
+            const epWord = series.totalEpisodes === 1 ? 'Ep' : 'Eps';
+            const seasonWord = seasonCount === 1 ? 'Season' : 'Seasons';
+
+            seriesContainer.innerHTML = `
+              <!-- Series Header Card -->
+              <div class="series-header flex items-center justify-between p-3.5 sm:p-4 hover:bg-zinc-800/60 active:bg-zinc-800 cursor-pointer select-none transition-colors">
+                <div class="flex items-center gap-3 overflow-hidden mr-2 min-w-0 flex-1">
+                  <span class="w-5 text-center text-xs sm:text-sm font-mono font-bold text-zinc-500 group-hover:text-netfixRed transition-colors shrink-0">${entryIdx + 1}</span>
+                  <div class="w-8 h-8 rounded-lg bg-netfixRed/10 border border-netfixRed/30 flex items-center justify-center shrink-0">
+                    <i data-lucide="tv-2" class="w-4 h-4 text-netfixRed"></i>
+                  </div>
+                  <div class="flex items-center flex-wrap gap-2 overflow-hidden min-w-0 flex-1">
+                    <span class="text-sm sm:text-base font-bold text-white tracking-wide truncate">${escapeHtml(series.seriesTitle)}</span>
+                    <span class="text-[10px] sm:text-[11px] font-mono font-bold uppercase bg-netfixRed/15 text-netfixRed border border-netfixRed/40 px-2 py-0.5 rounded-full shrink-0">
+                      Series • ${seasonCount} ${seasonWord} (${series.totalEpisodes} ${epWord})
+                    </span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="expand-label text-xs font-mono text-zinc-400 hidden sm:inline">Tap to open</span>
+                  <div class="chevron-wrap w-7 h-7 rounded-full bg-zinc-900 border border-cardBorder flex items-center justify-center transition-transform duration-200 text-zinc-400">
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Inline Accordion Drawer -->
+              <div class="accordion-drawer hidden border-t border-cardBorder/80 bg-[#121212] p-3 sm:p-4 space-y-3">
+                ${seasonCount > 1 ? `
+                  <div class="flex items-center justify-between pb-2 border-b border-cardBorder/60">
+                    <div class="season-pills-wrap flex items-center gap-1.5 overflow-x-auto py-1">
+                      ${seasonKeys.map(s => `
+                        <button class="season-pill-btn px-3 py-1 rounded-md text-xs font-mono font-bold transition-all ${s === activeSeason ? 'bg-netfixRed text-white shadow-sm' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-cardBorder'}" data-season="${s}">
+                          Season ${s} (${series.seasons[s].length} Eps)
+                        </button>
+                      `).join('')}
+                    </div>
+                    <span class="text-[11px] font-mono text-zinc-500 hidden xs:inline">E01 &rarr; E${String(series.seasons[activeSeason].length).padStart(2, '0')}</span>
+                  </div>
+                ` : ''}
+
+                <!-- Down-Stack Episode List -->
+                <div class="episodes-stack space-y-2">
+                </div>
+              </div>
+            `;
+
+            const episodesStackEl = seriesContainer.querySelector('.episodes-stack');
+            const drawerEl = seriesContainer.querySelector('.accordion-drawer');
+            const chevronEl = seriesContainer.querySelector('.chevron-wrap');
+            const expandLabel = seriesContainer.querySelector('.expand-label');
+            const seriesHeader = seriesContainer.querySelector('.series-header');
+
+            function renderSeasonEpisodes(sNum) {
+              episodesStackEl.innerHTML = '';
+              const epList = series.seasons[sNum] || [];
+
+              epList.forEach(itemData => {
+                const epFile = itemData.file;
+                const epInfo = itemData.fileInfo;
+                const epRow = document.createElement('div');
+                epRow.className = 'group/ep flex items-center justify-between p-2.5 sm:p-3 bg-cardBg hover:bg-zinc-800/80 active:bg-zinc-800 border border-cardBorder rounded-lg transition-colors cursor-pointer select-none';
+
+                epRow.innerHTML = `
+                  <div class="flex items-center gap-2.5 sm:gap-3 overflow-hidden mr-2 min-w-0 flex-1">
+                    <span class="text-xs font-mono font-bold text-netfixRed bg-netfixRed/10 border border-netfixRed/25 px-2 py-0.5 rounded shrink-0">
+                      E${String(epInfo.episode).padStart(2, '0')}
+                    </span>
+                    <span class="text-xs sm:text-sm font-medium text-zinc-200 group-hover/ep:text-white truncate">
+                      ${escapeHtml(epInfo.episodeTitle)}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                    <button class="ep-stream-btn p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-netfixRed transition-colors cursor-pointer" title="Stream Episode">
+                      <i data-lucide="monitor-smartphone" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+                    </button>
+                    <a href="https://drive.google.com/file/d/${epFile.id}/view" target="_blank" rel="noopener noreferrer" class="ep-download-btn p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-cardBorder text-zinc-400 hover:text-white transition-colors cursor-pointer" title="Download / Open in Google Drive">
+                      <i data-lucide="download" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+                    </a>
+                    ${epFile.size ? `
+                      <span class="hidden xs:inline-block text-[11px] font-mono text-zinc-400 bg-zinc-900/90 border border-zinc-700/60 rounded px-1.5 py-0.5 select-none whitespace-nowrap">
+                        ${escapeHtml(epFile.size)}
+                      </span>
+                    ` : ''}
+                  </div>
+                `;
+
+                epRow.addEventListener('mouseenter', () => prewarmFile(epFile.id), { passive: true });
+                epRow.addEventListener('touchstart', () => prewarmFile(epFile.id), { passive: true });
+                epRow.addEventListener('click', () => playFile(epFile));
+
+                const epStreamBtn = epRow.querySelector('.ep-stream-btn');
+                epStreamBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  playFile(epFile);
+                });
+
+                const epDownBtn = epRow.querySelector('.ep-download-btn');
+                if (epDownBtn) {
+                  epDownBtn.addEventListener('click', (e) => e.stopPropagation());
+                }
+
+                episodesStackEl.appendChild(epRow);
+              });
+
+              lucide.createIcons();
+            }
+
+            renderSeasonEpisodes(activeSeason);
+
+            let isOpen = false;
+            seriesHeader.addEventListener('click', () => {
+              isOpen = !isOpen;
+              if (isOpen) {
+                drawerEl.classList.remove('hidden');
+                chevronEl.classList.add('rotate-180');
+                seriesContainer.classList.add('border-netfixRed/40');
+                if (expandLabel) expandLabel.textContent = 'Tap to collapse';
+                lucide.createIcons();
+              } else {
+                drawerEl.classList.add('hidden');
+                chevronEl.classList.remove('rotate-180');
+                seriesContainer.classList.remove('border-netfixRed/40');
+                if (expandLabel) expandLabel.textContent = 'Tap to open';
+              }
+            });
+
+            const pillBtns = seriesContainer.querySelectorAll('.season-pill-btn');
+            pillBtns.forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const s = Number(btn.getAttribute('data-season'));
+                activeSeason = s;
+                pillBtns.forEach(b => {
+                  b.className = (Number(b.getAttribute('data-season')) === s)
+                    ? 'season-pill-btn px-3 py-1 rounded-md text-xs font-mono font-bold transition-all bg-netfixRed text-white shadow-sm'
+                    : 'season-pill-btn px-3 py-1 rounded-md text-xs font-mono font-bold transition-all bg-zinc-900 text-zinc-400 hover:text-white border border-cardBorder';
+                });
+                renderSeasonEpisodes(s);
+              });
+            });
+
+            fileListEl.appendChild(seriesContainer);
+            globalAnimIndex++;
+          }
         });
       });
+
       // Render Lucide icons
       lucide.createIcons();
     }
-
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)
